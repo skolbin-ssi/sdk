@@ -33,7 +33,6 @@ namespace Microsoft.NET.Build.Tests
                 Name = "ContentFiles",
                 IsExe = true,
                 TargetFrameworks = targetFramework,
-                IsSdkProject = true,
                 PackageReferences = { new TestPackageReference("ContentFilesExample", "1.0.2") },
             };
 
@@ -55,7 +54,7 @@ namespace {project.Name}
             var asset = _testAssetsManager
                 .CreateTestProject(project);
 
-            var cmd = new BuildCommand(Log, Path.Combine(asset.Path, project.Name));
+            var cmd = new BuildCommand(asset);
             cmd.Execute().Should().Pass();
 
             cmd.GetOutputDirectory(targetFramework)

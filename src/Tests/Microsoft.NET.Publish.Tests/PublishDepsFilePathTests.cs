@@ -45,7 +45,7 @@ namespace Microsoft.NET.Publish.Tests
         {
             var testProject = SetupProject(singleFile: true);
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
-            var restoreCommand = new RestoreCommand(Log, testAsset.Path, testProject.Name);
+            var restoreCommand = new RestoreCommand(testAsset);
             restoreCommand
                 .Execute()
                 .Should()
@@ -81,7 +81,6 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "TestsPublishDepsFilePath",
                 TargetFrameworks = "netcoreapp3.1",
-                IsSdkProject = true,
                 IsExe = true
             };
 

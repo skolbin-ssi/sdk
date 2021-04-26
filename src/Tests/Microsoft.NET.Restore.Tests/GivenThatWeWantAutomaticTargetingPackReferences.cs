@@ -34,10 +34,9 @@ namespace Microsoft.NET.Restore.Tests
             {
                 Name = "ProjectWithoutTargetingPackRef",
                 TargetFrameworks = targetFramework,
-                IsSdkProject = true,
             };
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: version);
 
             string projectAssetsJsonPath = Path.Combine(
                 testAsset.Path,
@@ -72,14 +71,13 @@ namespace Microsoft.NET.Restore.Tests
             {
                 Name = "ProjectWithoutTargetingPackRef",
                 TargetFrameworks = "net471;net472;netcoreapp3.0",
-                IsSdkProject = true,
             };
 
             TestAsset testAsset = null;
             if (includeExplicitReference)
             {
                 // Add explicit reference to assembly packs
-                testAsset = _testAssetsManager.CreateTestProject(testProject).WithProjectChanges(project =>
+                testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: includeExplicitReference.ToString()).WithProjectChanges(project =>
                 {
                     var ns = project.Root.Name.Namespace;
                     var itemGroup = project.Root.Elements(ns + "ItemGroup").FirstOrDefault();
@@ -142,7 +140,6 @@ namespace Microsoft.NET.Restore.Tests
             {
                 Name = "ProjectWithoutTargetingPackRef",
                 TargetFrameworks = targetFramework,
-                IsSdkProject = true,
             };
 
             // Add explicit reference to assembly packs
@@ -191,13 +188,12 @@ namespace Microsoft.NET.Restore.Tests
             {
                 Name = "ProjectWithoutTargetingPackRef",
                 TargetFrameworks = targetFramework,
-                IsSdkProject = true,
             };
             testProject.AdditionalProperties["AutomaticallyUseReferenceAssemblyPackages"] = "false";
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
             if (TestProject.ReferenceAssembliesAreInstalled(TargetDotNetFrameworkVersion.Version472))
             {
                 buildCommand.Execute()

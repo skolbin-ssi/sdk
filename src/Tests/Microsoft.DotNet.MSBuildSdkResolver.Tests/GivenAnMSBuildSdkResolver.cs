@@ -1,6 +1,7 @@
 // Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+extern alias sdkResolver;
 using FluentAssertions;
 using Microsoft.Build.Framework;
 using Microsoft.DotNet.MSBuildSdkResolver;
@@ -13,6 +14,8 @@ using Xunit;
 using Xunit.Abstractions;
 using System;
 using Microsoft.NET.TestFramework;
+using System.Linq;
+using Microsoft.DotNet.DotNetSdkResolver;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
@@ -49,6 +52,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeFalse();
             result.Path.Should().BeNull();
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().BeNull();
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().NotBeEmpty();
@@ -72,6 +76,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeTrue();
             result.Path.Should().Be(expected.FullName);
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().Be("99.99.98");
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().BeNullOrEmpty();
@@ -92,6 +97,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeFalse();
             result.Path.Should().BeNull();
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().BeNull();
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().Contain(string.Format(Strings.NETCoreSDKSmallerThanMinimumRequestedVersion, "99.99.99", "999.99.99"));
@@ -117,6 +123,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeFalse();
             result.Path.Should().BeNull();
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().BeNull();
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().Contain(string.Format(Strings.MSBuildSmallerThanMinimumVersion, "99.99.99", "2.0", "1.0"));
@@ -150,6 +157,8 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeTrue();
             result.Path.Should().Be((disallowPreviews ? compatibleRtm : compatiblePreview).FullName);
+            result.AdditionalPaths.Should().BeNull();
+            result.PropertiesToAdd.Should().BeNull();
             result.Version.Should().Be(disallowPreviews ? "98.98.98" : "99.99.99-preview");
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().BeNullOrEmpty();
@@ -158,7 +167,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        public void ItDoesNotReturnHighestSdkAvailableThatIsCompatibleWithMSBuildWhenVersionInGlobalJsonCannotBeFound(bool disallowPreviews)
+        public void ItDoesNotReturnHighestSdkAvailableThatIsCompatibleWithMSBuildWhenVersionInGlobalJsonCannotBeFoundOutsideOfVisualStudio(bool disallowPreviews)
         {
             var environment = new TestEnvironment(_testAssetsManager, callingMethod: "ItDoesNotReturnHighest___", identifier: disallowPreviews.ToString())
             {
@@ -179,14 +188,57 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
                 {
                     MSBuildVersion = new Version(20, 0, 0, 0),
                     ProjectFileDirectory = environment.TestDirectory,
+                    IsRunningInVisualStudio = false
                 },
                 new MockFactory());
 
             result.Success.Should().BeFalse();
             result.Path.Should().BeNull();
-            result.Version.Should().BeNull();;
+            result.AdditionalPaths.Should().BeNull();
+            result.PropertiesToAdd.Should().BeNull();
+            result.Version.Should().BeNull();
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().NotBeEmpty();
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void ItReturnsHighestSdkAvailableThatIsCompatibleWithMSBuildWhenVersionInGlobalJsonCannotBeFoundAndRunningInVisualStudio(bool disallowPreviews)
+        {
+            var environment = new TestEnvironment(_testAssetsManager, callingMethod: "ItReturnsHighest___", identifier: disallowPreviews.ToString())
+            {
+                DisallowPrereleaseByDefault = disallowPreviews
+            };
+
+            var compatibleRtm = environment.CreateSdkDirectory(ProgramFiles.X64, "Some.Test.Sdk", "98.98.98", new Version(19, 0, 0, 0));
+            var compatiblePreview = environment.CreateSdkDirectory(ProgramFiles.X64, "Some.Test.Sdk", "99.99.99-preview", new Version(20, 0, 0, 0));
+            var incompatible = environment.CreateSdkDirectory(ProgramFiles.X64, "Some.Test.Sdk", "100.100.100", new Version(21, 0, 0, 0));
+
+            environment.CreateMuxerAndAddToPath(ProgramFiles.X64);
+            environment.CreateGlobalJson(environment.TestDirectory, "1.2.3");
+
+            var resolver = environment.CreateResolver();
+            var result = (MockResult)resolver.Resolve(
+                new SdkReference("Some.Test.Sdk", null, null),
+                new MockContext
+                {
+                    MSBuildVersion = new Version(20, 0, 0, 0),
+                    ProjectFileDirectory = environment.TestDirectory,
+                    IsRunningInVisualStudio = true
+                },
+                new MockFactory());
+
+            result.Success.Should().BeTrue();
+            result.Path.Should().Be((disallowPreviews ? compatibleRtm : compatiblePreview).FullName);
+            result.AdditionalPaths.Should().BeNull();
+            result.PropertiesToAdd.Count.Should().Be(2);
+            result.PropertiesToAdd.ContainsKey("SdkResolverHonoredGlobalJson");
+            result.PropertiesToAdd.ContainsKey("SdkResolverGlobalJsonPath");
+            result.PropertiesToAdd["SdkResolverHonoredGlobalJson"].Should().Be("false");
+            result.Version.Should().Be(disallowPreviews ? "98.98.98" : "99.99.99-preview");
+            result.Warnings.Should().BeEquivalentTo(new[] { "Unable to locate the .NET SDK as specified by global.json, please check that the specified version is installed." });
+            result.Errors.Should().BeNullOrEmpty();
         }
 
         [Fact]
@@ -205,6 +257,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeFalse();
             result.Path.Should().BeNull();
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().BeNull();
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().Contain(string.Format(Strings.NETCoreSDKSmallerThanMinimumVersionRequiredByVisualStudio, "1.0.1", "1.0.4"));
@@ -227,6 +280,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeFalse();
             result.Path.Should().BeNull();
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().BeNull();
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().Contain(string.Format(Strings.NETCoreSDKSmallerThanMinimumVersionRequiredByVisualStudio, "1.0.1", "2.0.0"));
@@ -248,6 +302,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeTrue();
             result.Path.Should().Be(expected.FullName);
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().Be("99.99.99");
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().BeNullOrEmpty();
@@ -269,6 +324,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeTrue();
             result.Path.Should().Be(expected.FullName);
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().Be("999.99.99");
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().BeNullOrEmpty();
@@ -295,6 +351,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeTrue();
             result.Path.Should().Be(expected.FullName);
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().Be(disallowPreviewsByDefault ? "10.0.0" : "11.0.0-preview1");
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().BeNullOrEmpty();
@@ -322,6 +379,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeTrue();
             result.Path.Should().Be(expected.FullName);
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().Be(disallowPreviews ? "10.0.0" : "11.0.0-preview1");
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().BeNullOrEmpty();
@@ -353,6 +411,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
                     var expected = disallowPreviews ? rtm : preview;
                     result.Success.Should().BeTrue(m);
                     result.Path.Should().Be(expected.FullName, m);
+                    result.AdditionalPaths.Should().BeNull();
                     result.Version.Should().Be(disallowPreviews ? "10.0.0" : "11.0.0-preview1", m);
                     result.Warnings.Should().BeNullOrEmpty(m);
                     result.Errors.Should().BeNullOrEmpty(m);
@@ -366,7 +425,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
             Check(disallowPreviews: true, message: "file changed to disallow previews");
 
             environment.CreateVSSettingsFile(disallowPreviews: false);
-            Check(disallowPreviews: false,  message: "file changed to not disallow previews");
+            Check(disallowPreviews: false, message: "file changed to not disallow previews");
 
             environment.CreateVSSettingsFile(disallowPreviews: true);
             Check(disallowPreviews: true, message: "file changed back to disallow previews");
@@ -381,7 +440,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
             var environment = new TestEnvironment(_testAssetsManager);
             var rtm = environment.CreateSdkDirectory(ProgramFiles.X64, "Some.Test.Sdk", "10.0.0");
             var preview = environment.CreateSdkDirectory(ProgramFiles.X64, "Some.Test.Sdk", "11.0.0-preview1");
- 
+
             environment.CreateMuxerAndAddToPath(ProgramFiles.X64);
             environment.DisallowPrereleaseByDefault = true;
             environment.CreateGlobalJson(environment.TestDirectory, "11.0.0-preview1");
@@ -394,6 +453,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeTrue();
             result.Path.Should().Be(preview.FullName);
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().Be("11.0.0-preview1");
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().BeNullOrEmpty();
@@ -422,9 +482,25 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             result.Success.Should().BeTrue();
             result.Path.Should().Be(expected.FullName);
+            result.AdditionalPaths.Should().BeNull();
             result.Version.Should().Be(vsSettings.DisallowPrerelease() ? "10.0.0" : "11.0.0-preview1");
             result.Warnings.Should().BeNullOrEmpty();
             result.Errors.Should().BeNullOrEmpty();
+        }
+
+        [Fact]
+        public void GivenTemplateLocatorItCanResolveSdkVersion()
+        {
+            var environment = new TestEnvironment(_testAssetsManager);
+            const string sdkVersion = "99.99.97";
+            environment.CreateSdkDirectory(ProgramFiles.X64, "Some.Test.Sdk", sdkVersion);
+            environment.CreateMuxerAndAddToPath(ProgramFiles.X64);
+
+            var resolver = new TemplateLocator.TemplateLocator(environment.GetEnvironmentVariable,
+                new sdkResolver::Microsoft.DotNet.DotNetSdkResolver.VSSettings(environment.VSSettingsFile?.FullName, environment.DisallowPrereleaseByDefault), null, null);
+            resolver.TryGetDotnetSdkVersionUsedInVs("15.8", out var version).Should().BeTrue();
+
+            version.Should().Be(sdkVersion);
         }
 
         private enum ProgramFiles
@@ -459,14 +535,14 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             public SdkResolver CreateResolver(bool useAmbientSettings = false)
                 => new DotNetMSBuildSdkResolver(
-                    GetEnvironmentVariable, 
+                    GetEnvironmentVariable,
                     useAmbientSettings
                         ? VSSettings.Ambient
                         : new VSSettings(VSSettingsFile?.FullName, DisallowPrereleaseByDefault));
 
             public DirectoryInfo GetSdkDirectory(ProgramFiles programFiles, string sdkName, string sdkVersion)
                 => new DirectoryInfo(Path.Combine(
-                    TestDirectory.FullName, 
+                    TestDirectory.FullName,
                     GetProgramFilesDirectory(programFiles).FullName,
                     "dotnet",
                     "sdk",
@@ -477,7 +553,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             public DirectoryInfo GetProgramFilesDirectory(ProgramFiles programFiles)
                 => new DirectoryInfo(Path.Combine(TestDirectory.FullName, $"ProgramFiles{programFiles}"));
-            
+
             public DirectoryInfo CreateSdkDirectory(
                 ProgramFiles programFiles,
                 string sdkName,
@@ -529,7 +605,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
             }
 
             public void CreateGlobalJson(DirectoryInfo directory, string version)
-                => File.WriteAllText(Path.Combine(directory.FullName, "global.json"), 
+                => File.WriteAllText(Path.Combine(directory.FullName, "global.json"),
                     $@"{{ ""sdk"": {{ ""version"":  ""{version}"" }} }}");
 
             public string GetEnvironmentVariable(string variable)
@@ -549,7 +625,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
             }
 
             private void DeleteMinimumVSDefinedSDKVersionFile()
-            {                
+            {
                 File.Delete(GetMinimumVSDefinedSDKVersionFilePath());
             }
 
@@ -593,6 +669,7 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
             public new string ProjectFilePath { get => base.ProjectFilePath; set => base.ProjectFilePath = value; }
             public new string SolutionFilePath { get => base.SolutionFilePath; set => base.SolutionFilePath = value; }
             public new Version MSBuildVersion { get => base.MSBuildVersion; set => base.MSBuildVersion = value; }
+            public new bool IsRunningInVisualStudio { get => base.IsRunningInVisualStudio; set => base.IsRunningInVisualStudio = value; }
 
             public DirectoryInfo ProjectFileDirectory
             {
@@ -613,23 +690,57 @@ namespace Microsoft.DotNet.Cli.Utils.Tests
 
             public override SdkResult IndicateSuccess(string path, string version, IEnumerable<string> warnings = null)
                 => new MockResult(success: true, path: path, version: version, warnings: warnings);
+
+            public override SdkResult IndicateSuccess(string path, string version, IDictionary<string, string> propertiesToAdd, IDictionary<string, SdkResultItem> itemsToAdd, IEnumerable<string> warnings = null)
+                => new MockResult(success: true, path: path, version: version, warnings: warnings, propertiesToAdd: propertiesToAdd, itemsToAdd: itemsToAdd);
+
+            public override SdkResult IndicateSuccess(IEnumerable<string> paths, string version,
+                IDictionary<string, string> propertiesToAdd = null, IDictionary<string, SdkResultItem> itemsToAdd = null,
+                IEnumerable<string> warnings = null) => new MockResult(success: true, paths: paths, version: version, propertiesToAdd, itemsToAdd, warnings);
         }
 
         private sealed class MockResult : SdkResult
         {
             public MockResult(bool success, string path, string version, IEnumerable<string> warnings = null,
-                IEnumerable<string> errors = null)
+                IEnumerable<string> errors = null, IDictionary<string, string> propertiesToAdd = null, IDictionary<string, SdkResultItem> itemsToAdd = null)
             {
                 Success = success;
                 Path = path;
                 Version = version;
                 Warnings = warnings;
                 Errors = errors;
+                PropertiesToAdd = propertiesToAdd;
+                ItemsToAdd = itemsToAdd;
+            }
+
+            public MockResult(bool success, IEnumerable<string> paths, string version,
+                IDictionary<string, string> propertiesToAdd, IDictionary<string, SdkResultItem> itemsToAdd, IEnumerable<string> warnings)
+            {
+                Success = success;
+                if (paths != null)
+                {
+                    var firstPath = paths.FirstOrDefault();
+                    if (firstPath != null)
+                    {
+                        Path = firstPath;
+                    }
+                    if (paths.Count() > 1)
+                    {
+                        AdditionalPaths = paths.Skip(1).ToList();
+                    }
+                }
+                Version = version;
+                Warnings = warnings;
+                PropertiesToAdd = propertiesToAdd;
+                ItemsToAdd = itemsToAdd;
             }
 
             public override bool Success { get; protected set; }
             public override string Version { get; protected set; }
             public override string Path { get; protected set; }
+            public override IList<string> AdditionalPaths { get; set; }
+            public override IDictionary<string, string> PropertiesToAdd { get; protected set; }
+            public override IDictionary<string, SdkResultItem> ItemsToAdd { get; protected set; }
             public IEnumerable<string> Errors { get; }
             public IEnumerable<string> Warnings { get; }
         }

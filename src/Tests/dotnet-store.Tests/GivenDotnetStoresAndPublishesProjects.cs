@@ -15,7 +15,7 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
 {
     public class GivenDotnetStoresAndPublishesProjects : SdkTest
     {
-        private static string _tfm = "netcoreapp3.0";
+        private static string _tfm = "netcoreapp3.1";
         private static string _arch = RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();
 
         public GivenDotnetStoresAndPublishesProjects(ITestOutputHelper log) : base(log)
@@ -38,7 +38,7 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
             var profileProjectPath = _testAssetsManager.CopyTestAsset(profileProjectName).WithSource().Path;
             var profileProject = Path.Combine(profileProjectPath, $"{profileProjectName}.xml");
 
-            new RestoreCommand(Log, testProjectDirectory)
+            new RestoreCommand(testInstance)
                 .Execute()
                 .Should().Pass();
 
@@ -133,7 +133,7 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
             var profileProject1 = Path.Combine(profileProjectPath1, $"{profileProjectName1}.xml");
             var profileFilter1 = Path.Combine(profileProjectPath1, "FluentFilterProfile.xml");
 
-            new RestoreCommand(Log, testProjectDirectory)
+            new RestoreCommand(testInstance)
                 .Execute()
                 .Should().Pass();
 

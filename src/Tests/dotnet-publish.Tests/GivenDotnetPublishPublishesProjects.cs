@@ -30,17 +30,17 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
 
             var testProjectDirectory = testInstance.Path;
 
-            new RestoreCommand(Log, testProjectDirectory)
+            new RestoreCommand(testInstance)
                 .Execute()
                 .Should().Pass();
 
             new DotnetPublishCommand(Log)
                 .WithWorkingDirectory(testProjectDirectory)
-                .Execute("--framework", "netcoreapp3.0")
+                .Execute("--framework", "netcoreapp3.1")
                 .Should().Pass();
 
             var configuration = Environment.GetEnvironmentVariable("CONFIGURATION") ?? "Debug";
-            var outputDll = Path.Combine(testProjectDirectory, "bin", configuration, "netcoreapp3.0", "publish", $"{testAppName}.dll");
+            var outputDll = Path.Combine(testProjectDirectory, "bin", configuration, "netcoreapp3.1", "publish", $"{testAppName}.dll");
 
             new DotnetCommand(Log)
                 .Execute(outputDll)
@@ -59,7 +59,7 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
 
             new DotnetPublishCommand(Log)
                 .WithWorkingDirectory(testProjectDirectory)
-                .Execute("--framework", "netcoreapp3.0")
+                .Execute("--framework", "netcoreapp3.1")
                 .Should().Pass();
         }
 
@@ -75,7 +75,7 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
 
             new DotnetPublishCommand(Log)
                 .WithWorkingDirectory(projectDirectory)
-                .Execute("--framework", "netcoreapp3.0")
+                .Execute("--framework", "netcoreapp3.1")
                 .Should().Pass();
         }
 
@@ -197,7 +197,7 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
                 .Should().Pass();
 
             var configuration = Environment.GetEnvironmentVariable("CONFIGURATION") ?? "Debug";
-            return new DirectoryInfo(Path.Combine(testProjectDirectory, "bin", configuration, "netcoreapp3.0", rid ?? "", "publish"));
+            return new DirectoryInfo(Path.Combine(testProjectDirectory, "bin", configuration, "netcoreapp3.1", rid ?? "", "publish"));
         }
 
         [Fact]
@@ -219,7 +219,7 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
 
             var configuration = Environment.GetEnvironmentVariable("CONFIGURATION") ?? "Debug";
 
-            var outputProgram = Path.Combine(rootDir, "bin", configuration, "netcoreapp3.0", "publish", $"TestAppSimple.dll");
+            var outputProgram = Path.Combine(rootDir, "bin", configuration, "netcoreapp3.1", "publish", $"TestAppSimple.dll");
 
             new DotnetCommand(Log, outputProgram)
                 .Execute()
@@ -270,7 +270,7 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
 
             var configuration = Environment.GetEnvironmentVariable("CONFIGURATION") ?? "Debug";
 
-            var outputProgram = Path.Combine(rootPath, "bin", configuration, "netcoreapp3.0", rid, "publish", $"TestAppSimple.dll");
+            var outputProgram = Path.Combine(rootPath, "bin", configuration, "netcoreapp3.1", rid, "publish", $"TestAppSimple.dll");
 
             new DotnetCommand(Log, outputProgram)
                 .Execute()
@@ -287,7 +287,7 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
 
             var rootPath = testInstance.Path;
 
-            new BuildCommand(Log, rootPath)
+            new BuildCommand(testInstance)
                 .Execute()
                 .Should()
                 .Pass();
@@ -315,6 +315,22 @@ namespace Microsoft.DotNet.Cli.Publish.Tests
             {
                 cmd.Should().NotHaveStdOutContaining("Copyright (C) Microsoft Corporation. All rights reserved.");
             }
+        }
+
+        [Fact]
+        public void DotnetPublishAllowsPublishOutputDir()
+        {
+            var testInstance = _testAssetsManager.CopyTestAsset("TestAppSimple")
+                .WithSource()
+                .Restore(Log);
+
+            var rootDir = testInstance.Path;
+
+            new DotnetPublishCommand(Log)
+                .WithWorkingDirectory(rootDir)
+                .Execute("--no-restore", "-o", "publish")
+                .Should()
+                .Pass();
         }
     }
 }

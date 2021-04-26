@@ -25,7 +25,6 @@ namespace Microsoft.NET.Build.Tests
             var testProject = new TestProject
             {
                 Name = "HelloWorld",
-                IsSdkProject = true,
                 TargetFrameworks = targetFramework,
                 IsExe = isExe,
                 SourceFiles =
@@ -61,9 +60,7 @@ namespace Microsoft.NET.Build.Tests
             var testAsset = _testAssetsManager
                 .CreateTestProject(testProject, identifier: targetFramework + isExe);
 
-            var buildCommand = new BuildCommand(
-                Log,
-                Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()

@@ -27,13 +27,13 @@ namespace Microsoft.NET.Build.Tests
                 .CopyTestAsset("ComServer")
                 .WithSource();
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute()
                 .Should()
                 .Pass();
 
-            var outputDirectory = buildCommand.GetOutputDirectory("netcoreapp3.0");
+            var outputDirectory = buildCommand.GetOutputDirectory("netcoreapp3.1");
 
             outputDirectory.Should().OnlyHaveFiles(new[] {
                 "ComServer.dll",
@@ -64,13 +64,13 @@ namespace Microsoft.NET.Build.Tests
                     propertyGroup.Add(new XElement("EnableRegFreeCom", true));
                 });
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute()
                 .Should()
                 .Pass();
 
-            var outputDirectory = buildCommand.GetOutputDirectory("netcoreapp3.0");
+            var outputDirectory = buildCommand.GetOutputDirectory("netcoreapp3.1");
 
             outputDirectory.Should().OnlyHaveFiles(new[] {
                 "ComServer.dll",
@@ -89,7 +89,7 @@ namespace Microsoft.NET.Build.Tests
         public void It_embeds_the_clsidmap_in_the_comhost_when_rid_specified(string rid)
         {
             var testAsset = _testAssetsManager
-                .CopyTestAsset("ComServer")
+                .CopyTestAsset("ComServer", rid)
                 .WithSource()
                 .WithProjectChanges(project =>
                 {
@@ -98,13 +98,13 @@ namespace Microsoft.NET.Build.Tests
                     propertyGroup.Add(new XElement("RuntimeIdentifier", rid));
                 });
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute()
                 .Should()
                 .Pass();
 
-            var outputDirectory = buildCommand.GetOutputDirectory("netcoreapp3.0", runtimeIdentifier: rid);
+            var outputDirectory = buildCommand.GetOutputDirectory("netcoreapp3.1", runtimeIdentifier: rid);
 
             outputDirectory.Should().OnlyHaveFiles(new[] {
                 "ComServer.dll",
@@ -129,7 +129,7 @@ namespace Microsoft.NET.Build.Tests
                     propertyGroup.Add(new XElement("SelfContained", true));
                 });
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute()
                 .Should()
@@ -150,7 +150,7 @@ namespace Microsoft.NET.Build.Tests
                     var propertyGroup = project.Root.Elements(ns + "PropertyGroup").First();
                 });
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute()
                 .Should()
@@ -165,7 +165,7 @@ namespace Microsoft.NET.Build.Tests
         public void It_fails_to_embed_clsid_when_not_on_windows(string rid)
         {
             var testAsset = _testAssetsManager
-                .CopyTestAsset("ComServer")
+                .CopyTestAsset("ComServer", identifier: rid)
                 .WithSource()
                 .WithProjectChanges(project =>
                 {
@@ -174,7 +174,7 @@ namespace Microsoft.NET.Build.Tests
                     propertyGroup.Add(new XElement("RuntimeIdentifier", rid));
                 });
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute()
                 .Should()

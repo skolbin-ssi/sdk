@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 function InitializeCustomSDKToolset {
   if [[ "$restore" != true ]]; then
     return
@@ -9,12 +11,25 @@ function InitializeCustomSDKToolset {
     return
   fi
 
+  DISTRO=
+  MAJOR_VERSION=
+  if [ -e /etc/os-release ]; then
+      . /etc/os-release
+      DISTRO="$ID"
+      MAJOR_VERSION="${VERSION_ID:+${VERSION_ID%%.*}}"
+  fi
+
   InitializeDotNetCli true
-  InstallDotNetSharedFramework "1.0.5"
-  InstallDotNetSharedFramework "1.1.2"
+  if [[ "$DISTRO" != "ubuntu" || "$MAJOR_VERSION" -le 16 ]]; then
+    InstallDotNetSharedFramework "1.0.5"
+    InstallDotNetSharedFramework "1.1.2"
+  fi
   InstallDotNetSharedFramework "2.1.0"
   InstallDotNetSharedFramework "2.2.8"
   InstallDotNetSharedFramework "3.1.0"
+  InstallDotNetSharedFramework "5.0.0"
+
+  CreateBuildEnvScript
 }
 
 # Installs additional shared frameworks for testing purposes
@@ -35,6 +50,24 @@ function InstallDotNetSharedFramework {
       ExitWithExitCode $lastexitcode
     fi
   fi
+}
+
+function CreateBuildEnvScript {
+  mkdir -p $artifacts_dir
+  scriptPath="$artifacts_dir/sdk-build-env.sh"
+  scriptContents="
+#!/bin/bash
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+export DOTNET_MULTILEVEL_LOOKUP=0
+
+export DOTNET_ROOT=$DOTNET_INSTALL_DIR
+export DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR=$DOTNET_INSTALL_DIR
+
+export PATH=$DOTNET_INSTALL_DIR:\$PATH
+export NUGET_PACKAGES=$NUGET_PACKAGES
+"
+
+  echo "$scriptContents" > ${scriptPath}
 }
 
 InitializeCustomSDKToolset

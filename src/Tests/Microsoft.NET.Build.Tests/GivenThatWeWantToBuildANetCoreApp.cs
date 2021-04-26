@@ -24,6 +24,7 @@ using Xunit;
 using Xunit.Abstractions;
 using Microsoft.NET.Build.Tasks;
 using NuGet.Versioning;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.NET.Build.Tests
 {
@@ -31,6 +32,15 @@ namespace Microsoft.NET.Build.Tests
     {
         public GivenThatWeWantToBuildANetCoreApp(ITestOutputHelper log) : base(log)
         {
+        }
+
+        private BuildCommand GetBuildCommand([CallerMemberName] string callingMethod = "")
+        {
+            var testAsset = _testAssetsManager
+               .CopyTestAsset("HelloWorldWithSubDirs", callingMethod)
+               .WithSource();
+
+            return new BuildCommand(testAsset);
         }
 
         [Theory]
@@ -84,13 +94,12 @@ namespace Microsoft.NET.Build.Tests
                 Name = "RuntimeFrameworkVersionFloat",
                 TargetFrameworks = "netcoreapp2.0",
                 RuntimeFrameworkVersion = "2.0.*",
-                IsSdkProject = true,
                 IsExe = true
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -132,7 +141,6 @@ namespace Microsoft.NET.Build.Tests
                 Name = "FrameworkTargetTest",
                 TargetFrameworks = targetFramework,
                 RuntimeFrameworkVersion = runtimeFrameworkVersion,
-                IsSdkProject = true,
                 IsExe = isExe,
                 RuntimeIdentifier = runtimeIdentifier
             };
@@ -143,7 +151,7 @@ namespace Microsoft.NET.Build.Tests
 
             NuGetConfigWriter.Write(testAsset.TestRoot, NuGetConfigWriter.DotnetCoreBlobFeed);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute(extraArgs)
@@ -193,7 +201,6 @@ namespace Microsoft.NET.Build.Tests
             {
                 Name = "MismatchFrameworkTest",
                 TargetFrameworks = "netcoreapp2.0",
-                IsSdkProject = true,
                 IsExe = true,
             };
 
@@ -209,12 +216,12 @@ namespace Microsoft.NET.Build.Tests
 
             string runtimeIdentifier = EnvironmentInfo.GetCompatibleRid(testProject.TargetFrameworks);
 
-            testProject.AdditionalProperties["RuntimeIdentifiers"] = runtimeIdentifier;            
+            testProject.AdditionalProperties["RuntimeIdentifiers"] = runtimeIdentifier;
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject)
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: allowMismatch.ToString())
                 .Restore(Log, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             var result = buildCommand.ExecuteWithoutRestore($"/p:RuntimeIdentifier={runtimeIdentifier}");
 
@@ -247,6 +254,7 @@ namespace Microsoft.NET.Build.Tests
                 "netcoreapp2.1", "TargetDefinitions", GetValuesCommand.ValueType.Item)
             {
                 DependsOnTargets = "RunResolvePackageDependencies",
+                Properties = { { "EmitLegacyAssetsFileItems", "true" } }
             };
 
             getValuesCommand
@@ -312,7 +320,6 @@ namespace Microsoft.NET.Build.Tests
             TestProject project = new TestProject()
             {
                 Name = testName,
-                IsSdkProject = true,
                 TargetFrameworks = targetFramework,
                 RuntimeIdentifier = runtimeIdentifier,
                 IsExe = true,
@@ -351,9 +358,7 @@ public static class Program
                     }
                 });
 
-            string projectFolder = Path.Combine(testAsset.Path, project.Name);
-
-            var buildCommand = new BuildCommand(Log, projectFolder);
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -381,7 +386,6 @@ public static class Program
                 Name = "NetCore2App",
                 TargetFrameworks = targetFramework,
                 IsExe = true,
-                IsSdkProject = true
             };
 
             project.SourceFiles["Program.cs"] = @"
@@ -414,9 +418,7 @@ public static class Program
 
                 });
 
-            string projectFolder = Path.Combine(testAsset.Path, project.Name);
-
-            var buildCommand = new BuildCommand(Log, projectFolder);
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -450,14 +452,12 @@ public static class Program
                 Name = "NetCore2App",
                 TargetFrameworks = targetFramework,
                 IsExe = true,
-                IsSdkProject = true,
                 RuntimeIdentifier = runtimeIdentifier
             };
 
-            var testAsset = _testAssetsManager.CreateTestProject(project);
-            string projectFolder = Path.Combine(testAsset.Path, project.Name);
+            var testAsset = _testAssetsManager.CreateTestProject(project, identifier: isSelfContained.ToString());
 
-            var buildCommand = new BuildCommand(Log, projectFolder);
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute($"/p:SelfContained={isSelfContained}")
@@ -490,13 +490,12 @@ public static class Program
             {
                 Name = "NetCoreApp1.1_Conflicts",
                 TargetFrameworks = "netcoreapp1.1",
-                IsSdkProject = true,
                 IsExe = true
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute("/v:normal")
@@ -515,7 +514,6 @@ public static class Program
             {
                 Name = "AppUsingPackageWithSatellites",
                 TargetFrameworks = "netcoreapp2.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -538,7 +536,7 @@ public static class Program
                     }
                 });
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
             publishCommand
                 .Execute("/v:normal", $"/p:TargetFramework={testProject.TargetFrameworks}")
                 .Should()
@@ -559,7 +557,6 @@ public static class Program
             {
                 Name = "OutputPathCasing",
                 TargetFrameworks = "ignored",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -567,7 +564,7 @@ public static class Program
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute(extraArgs)
@@ -596,7 +593,6 @@ public static class Program
             {
                 Name = "NetCoreAppPackageReference",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -604,7 +600,6 @@ public static class Program
             {
                 Name = "NetStandardProject",
                 TargetFrameworks = "netstandard2.0",
-                IsSdkProject = true,
                 IsExe = false
             };
 
@@ -615,7 +610,7 @@ public static class Program
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -630,7 +625,6 @@ public static class Program
             {
                 Name = "ProjectWithPackageThatNeedsEscapes",
                 TargetFrameworks = "net462",
-                IsSdkProject = true,
                 IsExe = true,
             };
 
@@ -665,7 +659,7 @@ class Program
             var testAsset = _testAssetsManager
                 .CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -680,7 +674,6 @@ class Program
             {
                 Name = "ReferencesLegacyContracts",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true,
                 RuntimeIdentifier = EnvironmentInfo.GetCompatibleRid("netcoreapp3.0")
             };
@@ -693,7 +686,7 @@ class Program
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -708,7 +701,6 @@ class Program
             {
                 Name = "NoPackageReferences",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -739,14 +731,13 @@ class Program
             {
                 Name = "Prj_すおヸょー",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true,
             };
 
             var testAsset = _testAssetsManager
                 .CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -766,14 +757,13 @@ class Program
                 Name = "GenerateFilesTest",
                 TargetFrameworks = TFM,
                 RuntimeIdentifier = runtimeIdentifier,
-                IsSdkProject = true,
                 IsExe = true
             };
 
             var testAsset = _testAssetsManager
                 .CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -797,5 +787,24 @@ class Program
             depsFileLastWriteTime.Should().NotBe(File.GetLastWriteTimeUtc(depsFilePath));
             runtimeConfigLastWriteTime.Should().NotBe(File.GetLastWriteTimeUtc(runtimeConfigPath));
         }
+
+        [Fact]
+        public void It_passes_when_building_single_file_app_without_rid()
+        {
+            GetBuildCommand()
+                .Execute("/p:PublishSingleFile=true")
+                .Should()
+                .Pass();
+        }
+
+        [Fact]
+        public void It_errors_when_publishing_single_file_without_apphost()
+        {
+            GetBuildCommand()
+                .Execute("/p:PublishSingleFile=true", "/p:SelfContained=false", "/p:UseAppHost=false")
+                .Should()
+                .Pass();
+        }
+
     }
 }

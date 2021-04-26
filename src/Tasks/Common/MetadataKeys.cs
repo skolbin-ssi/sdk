@@ -16,10 +16,12 @@ namespace Microsoft.NET.Build.Tasks
         public const string IsTopLevelDependency = "IsTopLevelDependency";
         public const string AllowExplicitVersion = "AllowExplicitVersion";
         public const string RelativePath = "RelativePath";
+        public const string DiagnosticLevel = "DiagnosticLevel";
 
         // Target Metadata
         public const string RuntimeIdentifier = "RuntimeIdentifier";
         public const string TargetFrameworkMoniker = "TargetFrameworkMoniker";
+        public const string TargetFramework = "TargetFramework";
         public const string FrameworkName = "FrameworkName";
         public const string FrameworkVersion = "FrameworkVersion";
         public const string IsTrimmable = "IsTrimmable"; 
@@ -31,6 +33,7 @@ namespace Microsoft.NET.Build.Tasks
         public const string OriginalItemSpec = "OriginalItemSpec";
         public const string SDKRootFolder = "SDKRootFolder";
         public const string ShimRuntimeIdentifier = "ShimRuntimeIdentifier";
+        public const string RuntimePackAlwaysCopyLocal = "RuntimePackAlwaysCopyLocal";
 
         // Foreign Keys
         public const string ParentTarget = "ParentTarget";
@@ -77,11 +80,13 @@ namespace Microsoft.NET.Build.Tasks
         public const string TargetPath = "TargetPath";
         public const string CopyLocal = "CopyLocal";
 
-        //  Targeting packs
+        // Targeting packs
         public const string PackageConflictPreferredPackages = "PackageConflictPreferredPackages";
 
-        //  Runtime packs
+        // Runtime packs
         public const string DropFromSingleFile = "DropFromSingleFile";
+        public const string RuntimePackLabels = "RuntimePackLabels";
+        public const string AdditionalFrameworkReferences = "AdditionalFrameworkReferences";
 
         // Content files
         public const string PPOutputPath = "PPOutputPath";
@@ -105,5 +110,17 @@ namespace Microsoft.NET.Build.Tasks
         public const string ReferenceOnly = "ReferenceOnly";
 
         public const string Aliases = "Aliases";
+
+        // ReadyToRun
+        public const string DotNetHostPath = "DotNetHostPath";
+        public const string JitPath = "JitPath";
+        public const string TargetOS = "TargetOS";
+        public const string TargetArch = "TargetArch";
+        public const string DiaSymReader = "DiaSymReader";
+        public const string CreatePDBCommand = "CreatePDBCommand";
+        public const string OutputR2RImage = "OutputR2RImage";
+        public const string OutputPDBImage = "OutputPDBImage";
+        public const string EmitSymbols = "EmitSymbols";
+        public const string IsVersion5 = "IsVersion5";
     }
 }

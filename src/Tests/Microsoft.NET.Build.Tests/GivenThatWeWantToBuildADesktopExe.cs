@@ -37,7 +37,7 @@ namespace Microsoft.NET.Build.Tests
                 .WithSource()
                 .WithTargetFramework(targetFramework);
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute()
                 .Should()
@@ -65,7 +65,6 @@ namespace Microsoft.NET.Build.Tests
             {
                 Name = "AutoRuntimeIdentifierTest",
                 TargetFrameworks = "net472",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -81,7 +80,7 @@ namespace Microsoft.NET.Build.Tests
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: packageName + "_" + referencePlatformPackage.ToString());
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand.Execute()
                 .Should()
@@ -140,7 +139,7 @@ namespace Microsoft.NET.Build.Tests
                        }
                    });
 
-                var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+                var buildCommand = new BuildCommand(testAsset);
                 buildCommand
                     .Execute()
                     .Should()
@@ -188,13 +187,13 @@ namespace Microsoft.NET.Build.Tests
                         }
                     });
 
-                var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+                var buildCommand = new BuildCommand(testAsset);
                 buildCommand
                     .Execute()
                     .Should()
                     .Pass();
 
-                var publishCommand = new PublishCommand(Log, testAsset.TestRoot);
+                var publishCommand = new PublishCommand(testAsset);
                 publishCommand
                     .Execute(multiTarget ? new[] { "/p:TargetFramework=net46" } : Array.Empty<string>())
                     .Should()
@@ -244,9 +243,8 @@ namespace Microsoft.NET.Build.Tests
         [InlineData("win8-x64-aot", "x64")]
         [InlineData("win10-arm", "arm")]
         [InlineData("win10-arm-aot", "arm")]
-        //PlatformTarget=arm64 is not supported and never inferred
-        [InlineData("win10-arm64", "AnyCPU")]
-        [InlineData("win10-arm64-aot", "AnyCPU")]
+        [InlineData("win10-arm64", "arm64")]
+        [InlineData("win10-arm64-aot", "arm64")]
         // cpu architecture is never expected at the front
         [InlineData("x86-something", "AnyCPU")]
         [InlineData("x64-something", "AnyCPU")]
@@ -300,7 +298,6 @@ namespace Microsoft.NET.Build.Tests
                 Name = "DefaultReferences",
                 //  TODO: Add net35 to the TargetFrameworks list once https://github.com/Microsoft/msbuild/issues/1333 is fixed
                 TargetFrameworks = "net40;net45;net461",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -322,7 +319,7 @@ namespace DefaultReferences
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, "DefaultReferences"));
+            var buildCommand = new BuildCommand(testAsset, "DefaultReferences");
 
             buildCommand
                 .Execute()
@@ -341,13 +338,12 @@ namespace DefaultReferences
                 Name = "MissingReferenceAssemblies",
                 //  A version of .NET we don't expect to exist
                 TargetFrameworks = "net469",
-                IsSdkProject = true,
                 IsExe = true
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             //  Pass "/clp:summary" so that we can check output for string "1 Error(s)"
             var result = buildCommand.Execute("/clp:summary");
@@ -371,7 +367,6 @@ namespace DefaultReferences
             {
                 Name = "DuplicateFrameworkReferences",
                 TargetFrameworks = "net461",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -386,7 +381,7 @@ namespace DefaultReferences
                     itemGroup.Add(new XElement(ns + "Reference", new XAttribute("Include", "System")));
                 });
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute("/v:normal")
@@ -403,7 +398,6 @@ namespace DefaultReferences
             {
                 Name = "DesktopConflictsNuGet",
                 TargetFrameworks = "net461",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -420,7 +414,7 @@ namespace DefaultReferences
                                     new XAttribute("Version", "9.0.1")));
                 });
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute("/v:normal")
@@ -442,7 +436,6 @@ namespace DefaultReferences
             {
                 Name = "DesktopConflictsHttp4_1",
                 TargetFrameworks = "net461",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -450,7 +443,7 @@ namespace DefaultReferences
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             //  Verify that ResolveAssemblyReference doesn't generate any conflicts
             buildCommand
@@ -468,7 +461,6 @@ namespace DefaultReferences
             {
                 Name = "DesktopConflictsRuntimeTargets",
                 TargetFrameworks = "net461",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -486,7 +478,7 @@ namespace DefaultReferences
                                     new XAttribute("Version", "4.3.0")));
                 });
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             var buildResult = buildCommand
                 .Execute("/v:normal");
@@ -528,7 +520,6 @@ namespace DefaultReferences
 
             if (useSdkProject)
             {
-                testProject.IsSdkProject = true;
                 testProject.TargetFrameworks = "net472";
             }
             else
@@ -578,7 +569,7 @@ class Program
                     itemGroup.Add(httpReference);
                 });
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute("/v:normal")
@@ -612,7 +603,6 @@ class Program
             {
                 Name = "OverriddenAlias",
                 IsExe = true,
-                IsSdkProject = true,
                 TargetFrameworks = "net461"
             };
 
@@ -645,7 +635,7 @@ class Program
                 });
 
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -660,7 +650,7 @@ class Program
                 .CopyTestAsset("DesktopNeedsBindingRedirects")
                 .WithSource();
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -696,7 +686,7 @@ class Program
                 .CopyTestAsset("DesktopNeedsBindingRedirects")
                 .WithSource();
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -785,7 +775,7 @@ class Program
 
         private XElement BuildTestAssetGetAppConfig(TestAsset testAsset)
         {
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -806,7 +796,6 @@ class Program
             {
                 Name = "DesktopUsingPackageWithSatellites",
                 TargetFrameworks = "net46",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -828,7 +817,7 @@ class Program
                     }
                 });
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute("/v:normal")
                 .Should()
@@ -854,7 +843,7 @@ class Program
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()

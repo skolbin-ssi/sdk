@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using FluentAssertions;
 using Microsoft.NET.Build.Tasks;
@@ -22,6 +24,8 @@ namespace Microsoft.NET.Publish.Tests
 
         [Theory]
         [InlineData("netcoreapp3.0")]
+        [InlineData("net5.0")]
+        [InlineData("net6.0")]
         public void It_only_runs_readytorun_compiler_when_switch_is_enabled(string targetFramework)
         {
             var projectName = "CrossgenTest1";
@@ -31,9 +35,9 @@ namespace Microsoft.NET.Publish.Tests
                 projectName,
                 "ClassLib");
 
-            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject);
+            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testProjectInstance.Path, testProject.Name));
+            var publishCommand = new PublishCommand(testProjectInstance);
             publishCommand.Execute().Should().Pass();
 
             DirectoryInfo publishDirectory = publishCommand.GetOutputDirectory(
@@ -49,6 +53,8 @@ namespace Microsoft.NET.Publish.Tests
 
         [Theory]
         [InlineData("netcoreapp3.0")]
+        [InlineData("net5.0")]
+        [InlineData("net6.0")]
         public void It_creates_readytorun_images_for_all_assemblies_except_excluded_ones(string targetFramework)
         {
             var projectName = "CrossgenTest2";
@@ -59,11 +65,11 @@ namespace Microsoft.NET.Publish.Tests
                 "ClassLib");
 
             testProject.AdditionalProperties["PublishReadyToRun"] = "True";
-            testProject.AdditionalItems["PublishReadyToRunExclude"] = "Classlib.dll";
+            testProject.AdditionalItems["PublishReadyToRunExclude"] = new Dictionary<string, string> { ["Include"] = "Classlib.dll" };
 
-            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject);
+            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testProjectInstance.Path, testProject.Name));
+            var publishCommand = new PublishCommand(testProjectInstance);
             publishCommand.Execute().Should().Pass();
 
             DirectoryInfo publishDirectory = publishCommand.GetOutputDirectory(
@@ -90,20 +96,26 @@ namespace Microsoft.NET.Publish.Tests
 
         [Theory]
         [InlineData("netcoreapp3.0")]
+        [InlineData("net5.0")]
+        [InlineData("net6.0")]
         public void It_creates_readytorun_symbols_when_switch_is_used(string targetFramework)
         {
-            TestProjectPublishing_Internal("CrossgenTest3", targetFramework, emitNativeSymbols: true);
+            TestProjectPublishing_Internal("CrossgenTest3", targetFramework, emitNativeSymbols: true, identifier: targetFramework);
         }
 
         [Theory]
         [InlineData("netcoreapp3.0")]
+        [InlineData("net5.0")]
+        [InlineData("net6.0")]
         public void It_supports_framework_dependent_publishing(string targetFramework)
         {
-            TestProjectPublishing_Internal("FrameworkDependent", targetFramework, isSelfContained: false, emitNativeSymbols:true);
+            TestProjectPublishing_Internal("FrameworkDependent", targetFramework, isSelfContained: false, emitNativeSymbols:true, identifier: targetFramework);
         }
 
         [Theory]
         [InlineData("netcoreapp3.0")]
+        [InlineData("net5.0")]
+        [InlineData("net6.0")]
         public void It_does_not_support_cross_platform_readytorun_compilation(string targetFramework)
         {
             var ridToUse = EnvironmentInfo.GetCompatibleRid(targetFramework);
@@ -117,7 +129,6 @@ namespace Microsoft.NET.Publish.Tests
                 Name = "FailingToCrossgen",
                 TargetFrameworks = "netcoreapp3.0",
                 IsExe = true,
-                IsSdkProject = true,
             };
 
             if (platform.Contains("win"))
@@ -147,9 +158,9 @@ namespace Microsoft.NET.Publish.Tests
 
             testProject.AdditionalProperties["PublishReadyToRun"] = "True";
 
-            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject);
+            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testProjectInstance.Path, testProject.Name));
+            var publishCommand = new PublishCommand(testProjectInstance);
 
             publishCommand.Execute()
                 .Should()
@@ -158,19 +169,18 @@ namespace Microsoft.NET.Publish.Tests
         }
 
         [Fact]
-        public void It_warns_when_targetting_netcoreapp_2_x()
+        public void It_warns_when_targetting_netcoreapp_2_x_readytorun()
         {
             var testProject = new TestProject()
             {
                 Name = "ConsoleApp",
                 TargetFrameworks = "netcoreapp2.2",
-                IsSdkProject = true,
                 IsExe = true,
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var publishCommand = new PublishCommand(testAsset);
 
             publishCommand.Execute($"/p:PublishReadyToRun=true",
                                    $"/p:RuntimeIdentifier={RuntimeInformation.RuntimeIdentifier}")
@@ -182,35 +192,56 @@ namespace Microsoft.NET.Publish.Tests
 
         [Theory]
         [InlineData("netcoreapp3.0")]
+        [InlineData("net5.0")]
+        [InlineData("net6.0")]
         public void It_can_publish_readytorun_for_library_projects(string targetFramework)
         {
-            TestProjectPublishing_Internal("LibraryProject1", targetFramework, isSelfContained: false, makeExeProject: false);
+            TestProjectPublishing_Internal("LibraryProject1", targetFramework, isSelfContained: false, makeExeProject: false, identifier: targetFramework);
         }
 
         [Theory]
         [InlineData("netcoreapp3.0")]
+        [InlineData("net5.0")]
+        [InlineData("net6.0")]
         public void It_can_publish_readytorun_for_selfcontained_library_projects(string targetFramework)
         {
-            TestProjectPublishing_Internal("LibraryProject2", targetFramework, isSelfContained:true, makeExeProject: false);
+            TestProjectPublishing_Internal("LibraryProject2", targetFramework, isSelfContained:true, makeExeProject: false, identifier: targetFramework);
         }
 
-        [Theory(Skip = "https://github.com/dotnet/runtime/issues/37196")]
+        [RequiresMSBuildVersionTheory("16.8.0")]
         [InlineData("net5.0")]
+        [InlineData("net6.0")]
         void It_can_publish_readytorun_using_crossgen2(string targetFramework)
         {
-            // Crossgen2 only supported for Linux/Windows x64 scenarios for now
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.OSArchitecture != Architecture.X64)
+            // In .NET 5 Crossgen2 supported Linux/Windows x64 only
+            if (targetFramework == "net5.0" &&
+                (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.OSArchitecture != Architecture.X64))
                 return;
 
-            TestProjectPublishing_Internal("Crossgen2TestApp", targetFramework, isSelfContained: true, emitNativeSymbols: true, useCrossgen2: true);
+            TestProjectPublishing_Internal("Crossgen2TestApp", targetFramework, isSelfContained: true, emitNativeSymbols: true, useCrossgen2: true, composite: false, identifier: targetFramework);
         }
 
-        [Theory]
+        [RequiresMSBuildVersionTheory("16.8.0")]
         [InlineData("net5.0")]
-        public void It_only_supports_selfcontained_when_using_crossgen2(string targetFramework)
+        [InlineData("net6.0")]
+        void It_can_publish_readytorun_using_crossgen2_composite_mode(string targetFramework)
         {
-            // Crossgen2 only supported for Linux/Windows x64 scenarios for now
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.OSArchitecture != Architecture.X64)
+            // In .NET 5 Crossgen2 supported Linux/Windows x64 only
+            if (targetFramework == "net5.0" &&
+                (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.OSArchitecture != Architecture.X64))
+                return;
+
+            TestProjectPublishing_Internal("Crossgen2TestApp", targetFramework, isSelfContained: true, emitNativeSymbols: false, useCrossgen2: true, composite: true, identifier: targetFramework);
+        }
+
+        [RequiresMSBuildVersionTheory("16.8.0")]
+        [InlineData("net5.0")]
+        [InlineData("net6.0")]
+        public void It_supports_libraries_when_using_crossgen2(string targetFramework)
+        {
+            // In .NET 5 Crossgen2 supported Linux/Windows x64 only
+            if (targetFramework == "net5.0" &&
+                (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.OSArchitecture != Architecture.X64))
                 return;
 
             var projectName = "FrameworkDependentUsingCrossgen2";
@@ -224,16 +255,21 @@ namespace Microsoft.NET.Publish.Tests
             testProject.AdditionalProperties["PublishReadyToRunUseCrossgen2"] = "True";
             testProject.AdditionalProperties["SelfContained"] = "False";
 
-            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject);
+            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject, targetFramework);
 
             var publishCommand = new PublishCommand(Log, Path.Combine(testProjectInstance.Path, testProject.Name));
-            publishCommand.Execute()
-                .Should()
-                .Fail()
-                .And.HaveStdOutContainingIgnoreCase("NETSDK1126");
+            publishCommand.Execute().Should().Pass();
         }
 
-        private void TestProjectPublishing_Internal(string projectName, string targetFramework, bool makeExeProject = true, bool isSelfContained = true, bool emitNativeSymbols = false, bool useCrossgen2 = false)
+        private void TestProjectPublishing_Internal(string projectName,
+            string targetFramework,
+            bool makeExeProject = true,
+            bool isSelfContained = true,
+            bool emitNativeSymbols = false,
+            bool useCrossgen2 = false,
+            bool composite = true,
+            [CallerMemberName] string callingMethod = "",
+            string identifier = null)
         {
             var testProject = CreateTestProjectForR2RTesting(
                 targetFramework,
@@ -244,11 +280,12 @@ namespace Microsoft.NET.Publish.Tests
             testProject.AdditionalProperties["PublishReadyToRun"] = "True";
             testProject.AdditionalProperties["PublishReadyToRunEmitSymbols"] = emitNativeSymbols ? "True" : "False";
             testProject.AdditionalProperties["PublishReadyToRunUseCrossgen2"] = useCrossgen2 ? "True" : "False";
+            testProject.AdditionalProperties["PublishReadyToRunComposite"] = composite ? "True" : "False";
             testProject.AdditionalProperties["SelfContained"] = isSelfContained ? "True" : "False";
 
-            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject);
+            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject, callingMethod, identifier);
 
-            var publishCommand = new PublishCommand(Log, Path.Combine(testProjectInstance.Path, testProject.Name));
+            var publishCommand = new PublishCommand(testProjectInstance);
             publishCommand.Execute().Should().Pass();
 
             DirectoryInfo publishDirectory = publishCommand.GetOutputDirectory(
@@ -282,7 +319,6 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = referenceProjectName,
                 TargetFrameworks = targetFramework,
-                IsSdkProject = true,
             };
             referenceProject.SourceFiles[$"{referenceProjectName}.cs"] = @"
 using System;
@@ -299,7 +335,6 @@ public class Classlib
                 Name = mainProjectName,
                 TargetFrameworks = targetFramework,
                 IsExe = isExeProject,
-                IsSdkProject = true,
                 RuntimeIdentifier = EnvironmentInfo.GetCompatibleRid(targetFramework),
                 ReferencedProjects = { referenceProject },
             };
@@ -316,7 +351,7 @@ public class Program
             return testProject;
         }
 
-        private string GetPDBFileName(string assemblyFile)
+        public static string GetPDBFileName(string assemblyFile)
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {

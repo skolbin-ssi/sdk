@@ -34,7 +34,7 @@ namespace Microsoft.NET.Build.Tests
                 .WithSource()
                 .WithTargetFramework(targetFramework);
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute()
                 .Should()
@@ -73,7 +73,7 @@ namespace Microsoft.NET.Build.Tests
                 .WithSource()
                 .WithTargetFramework(targetFramework);
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute(new string[] {
                     "/restore", "/p:UseAppHost=true",
@@ -110,7 +110,7 @@ namespace Microsoft.NET.Build.Tests
                 .WithSource()
                 .WithTargetFramework(targetFramework);
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute()
                 .Should()
@@ -137,10 +137,10 @@ namespace Microsoft.NET.Build.Tests
             var targetFramework = "netcoreapp3.0";
 
             var testAsset = _testAssetsManager
-                .CopyTestAsset("HelloWorld")
+                .CopyTestAsset("HelloWorld", identifier: target)
                 .WithSource();
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute(new string[] {
                     $"/p:TargetFramework={targetFramework}",
@@ -177,14 +177,13 @@ namespace Microsoft.NET.Build.Tests
                 Name = "ResourceTest",
                 TargetFrameworks = targetFramework,
                 RuntimeIdentifier = runtimeIdentifier,
-                IsSdkProject = true,
                 IsExe = true,
             };
             testProject.AdditionalProperties.Add("AssemblyVersion", version);
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand.Execute()
                 .Should()
@@ -212,7 +211,7 @@ namespace Microsoft.NET.Build.Tests
                     propertyGroup.Element(ns + "TargetFramework").SetValue(targetFramework);
                 });
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute("/p:CopyLocalLockFileAssemblies=false")
                 .Should()
@@ -239,7 +238,6 @@ namespace Microsoft.NET.Build.Tests
                 TargetFrameworks = "netcoreapp3.0",
                 //  Use "any" as RID so that it will fail to find AppHost
                 RuntimeIdentifier = "any",
-                IsSdkProject = true,
                 IsExe = true,
             };
             testProject.AdditionalProperties["SelfContained"] = "false";
@@ -247,7 +245,7 @@ namespace Microsoft.NET.Build.Tests
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot, testProject.Name);
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand.Execute()
                 .Should()
@@ -255,16 +253,15 @@ namespace Microsoft.NET.Build.Tests
 
         }
 
-        [WindowsOnlyFact] // Windows-only due to https://github.com/dotnet/corefx/issues/42455
+        [Fact]
         public void It_retries_on_failure_to_create_apphost()
         {
-            const string TFM = "netcoreapp3.0";
+            const string TFM = "net5.0";
 
             var testProject = new TestProject()
             {
                 Name = "RetryAppHost",
                 TargetFrameworks = TFM,
-                IsSdkProject = true,
                 IsExe = true,
             };
             
@@ -273,9 +270,7 @@ namespace Microsoft.NET.Build.Tests
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var projectDirectory = Path.Combine(testAsset.TestRoot, testProject.Name);
-
-            var buildCommand = new BuildCommand(Log, projectDirectory);
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand.Execute()
                 .Should()
@@ -289,7 +284,7 @@ namespace Microsoft.NET.Build.Tests
                     testProject.Name + ".dll"),
                 DateTime.UtcNow.AddSeconds(5));
 
-            var intermediateAppHost = Path.Combine(intermediateDirectory, testProject.Name + Constants.ExeSuffix);
+            var intermediateAppHost = Path.Combine(intermediateDirectory, "apphost" + Constants.ExeSuffix);
 
             using (var stream = new FileStream(intermediateAppHost, FileMode.Open, FileAccess.Read, FileShare.None))
             {
@@ -298,13 +293,14 @@ namespace Microsoft.NET.Build.Tests
                 var result = buildCommand.Execute(
                     "/clp:NoSummary",
                     $"/p:CopyRetryCount={Retries}",
+                    "/warnaserror",
                     "/p:CopyRetryDelayMilliseconds=0");
 
                 result
                     .Should()
                     .Fail()
                     .And
-                    .HaveStdOutContaining("System.IO.IOException");
+                    .HaveStdOutContaining("NETSDK1113");
 
                 Regex.Matches(result.StdOut, "NETSDK1113", RegexOptions.None).Count.Should().Be(Retries);
             }

@@ -1,135 +1,228 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Dependencies>
   <ProductDependencies>
-    <Dependency Name="Microsoft.TemplateEngine.Cli" Version="5.0.0-preview.7.20309.3">
+    <Dependency Name="Microsoft.TemplateEngine.Cli" Version="6.0.100-preview.5.21225.1">
       <Uri>https://github.com/dotnet/templating</Uri>
-      <Sha>0d223602b45f0820b59675906ae8675a379aea44</Sha>
+      <Sha>dbb56ad780483ff9134f27ed0c636173d8d502e0</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NETCore.App.Ref" Version="5.0.0-preview.7.20309.9">
+    <Dependency Name="Microsoft.TemplateEngine.Abstractions" Version="6.0.100-preview.5.21225.1">
+      <Uri>https://github.com/dotnet/templating</Uri>
+      <Sha>dbb56ad780483ff9134f27ed0c636173d8d502e0</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.TemplateEngine.Orchestrator.RunnableProjects" Version="6.0.100-preview.5.21225.1">
+      <Uri>https://github.com/dotnet/templating</Uri>
+      <Sha>dbb56ad780483ff9134f27ed0c636173d8d502e0</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.TemplateEngine.Utils" Version="6.0.100-preview.5.21225.1">
+      <Uri>https://github.com/dotnet/templating</Uri>
+      <Sha>dbb56ad780483ff9134f27ed0c636173d8d502e0</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.TemplateSearch.Common" Version="6.0.100-preview.5.21225.1">
+      <Uri>https://github.com/dotnet/templating</Uri>
+      <Sha>dbb56ad780483ff9134f27ed0c636173d8d502e0</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.DotNet.Common.ItemTemplates" Version="6.0.100-preview.5.21225.1">
+      <Uri>https://github.com/dotnet/templating</Uri>
+      <Sha>dbb56ad780483ff9134f27ed0c636173d8d502e0</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.NETCore.App.Ref" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>e2ed3631b9a2a97de10991e4b548f63086cdc67a</Sha>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NETCore.App.Runtime.win-x64" Version="5.0.0-preview.7.20309.9">
+    <Dependency Name="VS.Redist.Common.NetCore.SharedFramework.x64.6.0" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>e2ed3631b9a2a97de10991e4b548f63086cdc67a</Sha>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.DotNet.XUnitExtensions" Version="5.0.0-beta.20280.1">
-      <Uri>https://github.com/dotnet/arcade</Uri>
-      <Sha>fef373440d604c428950236fbc2b99ce0df368a9</Sha>
-    </Dependency>
-    <Dependency Name="Microsoft.NET.HostModel" Version="5.0.0-preview.7.20309.9">
+    <Dependency Name="Microsoft.NETCore.App.Runtime.win-x64" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>e2ed3631b9a2a97de10991e4b548f63086cdc67a</Sha>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.Extensions.DependencyModel" Version="5.0.0-preview.7.20309.9">
+    <Dependency Name="Microsoft.NETCore.App.Host.win-x64" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>e2ed3631b9a2a97de10991e4b548f63086cdc67a</Sha>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NETCore.DotNetHostResolver" Version="5.0.0-preview.7.20309.9">
+    <Dependency Name="Microsoft.NETCore.Platforms" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>e2ed3631b9a2a97de10991e4b548f63086cdc67a</Sha>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.DotNet.Cli.CommandLine" Version="1.0.0-preview.19208.1">
-      <Uri>https://github.com/dotnet/CliCommandLineParser</Uri>
-      <Sha>0e89c2116ad28e404ba56c14d1c3f938caa25a01</Sha>
+    <Dependency Name="Microsoft.NET.HostModel" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/runtime</Uri>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.Build" Version="16.7.0-preview-20310-02">
-      <Uri>https://github.com/microsoft/msbuild</Uri>
-      <Sha>5292fedb9b70555083002a102309f3c42752f29f</Sha>
+    <Dependency Name="Microsoft.Extensions.DependencyModel" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/runtime</Uri>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.Build.Localization" Version="16.7.0-preview-20310-02">
-      <Uri>https://github.com/microsoft/msbuild</Uri>
-      <Sha>5292fedb9b70555083002a102309f3c42752f29f</Sha>
+    <Dependency Name="Microsoft.NETCore.DotNetHostResolver" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/runtime</Uri>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.FSharp.Compiler" Version="10.10.0-beta.20308.2">
+    <Dependency Name="Microsoft.Build" Version="16.10.0-preview-21223-01">
+      <Uri>https://github.com/dotnet/msbuild</Uri>
+      <Sha>117a9cbe207cf136e5d99fc6645a5ebc06b478c0</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.Build.Localization" Version="16.10.0-preview-21223-01">
+      <Uri>https://github.com/dotnet/msbuild</Uri>
+      <Sha>117a9cbe207cf136e5d99fc6645a5ebc06b478c0</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.FSharp.Compiler" Version="11.4.2-beta.21224.1">
       <Uri>https://github.com/dotnet/fsharp</Uri>
-      <Sha>f8fbef6d7c002d17be0a5fe38afff25bb4b7769c</Sha>
+      <Sha>9588f1d472ac8227796dca34ff76dfe136bb4bd7</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.Net.Compilers.Toolset" Version="3.7.0-3.20310.7">
+    <Dependency Name="Microsoft.Net.Compilers.Toolset" Version="3.10.0-3.21224.14">
       <Uri>https://github.com/dotnet/roslyn</Uri>
-      <Sha>9083edf60271f915cf0c69c194afd9e0c6266f5c</Sha>
+      <Sha>28a4364bf10947f1bdbf2e84b5f3c368d6531d82</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.AspNetCore.DeveloperCertificates.XPlat" Version="5.0.0-preview.7.20310.10">
+    <Dependency Name="Microsoft.CodeAnalysis.CSharp" Version="3.10.0-3.21224.14">
+      <Uri>https://github.com/dotnet/roslyn</Uri>
+      <Sha>28a4364bf10947f1bdbf2e84b5f3c368d6531d82</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.CodeAnalysis.CSharp.Features" Version="3.10.0-3.21224.14">
+      <Uri>https://github.com/dotnet/roslyn</Uri>
+      <Sha>28a4364bf10947f1bdbf2e84b5f3c368d6531d82</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="3.10.0-3.21224.14">
+      <Uri>https://github.com/dotnet/roslyn</Uri>
+      <Sha>28a4364bf10947f1bdbf2e84b5f3c368d6531d82</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.AspNetCore.DeveloperCertificates.XPlat" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/aspnetcore</Uri>
-      <Sha>e929dab4966495dd8d70acb34ac0f0e151f05cfe</Sha>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NET.Sdk.Razor" Version="5.0.0-preview.7.20310.10">
+    <Dependency Name="Microsoft.AspNetCore.TestHost" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/aspnetcore</Uri>
-      <Sha>e929dab4966495dd8d70acb34ac0f0e151f05cfe</Sha>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
     </Dependency>
-    <Dependency Name="NuGet.Build.Tasks" Version="5.7.0-preview.2.6618">
-      <Uri>https://github.com/NuGet/NuGet.Client</Uri>
-      <Sha>721908c643a7806b630774e76b53e37507fec062</Sha>
+    <Dependency Name="NuGet.Build.Tasks" Version="5.10.0-preview.2.7203">
+      <Uri>https://github.com/nuget/nuget.client</Uri>
+      <Sha>936eff1f2cccbb25ba537e47a2eaaa4984a160f4</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NET.Test.Sdk" Version="16.8.0-preview-20200610-06">
+    <Dependency Name="Microsoft.NET.Test.Sdk" Version="17.0.0-preview-20210426-01">
       <Uri>https://github.com/microsoft/vstest</Uri>
-      <Sha>0f37872348e43ad95df182489890e80ea0f2998a</Sha>
+      <Sha>096f12cc21b10ecbf7b89e63a1a2180a2253415a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NET.ILLink.Tasks" Version="5.0.0-preview.3.20309.3">
+    <Dependency Name="Microsoft.NET.ILLink.Tasks" Version="6.0.100-preview.5.21226.4">
       <Uri>https://github.com/mono/linker</Uri>
-      <Sha>bc442f7a56647d45bf306e969bdef6217ebac171</Sha>
+      <Sha>4f95e906b0c5d9514b77179105e7758f2c4b7c1c</Sha>
     </Dependency>
-    <Dependency Name="System.CodeDom" Version="5.0.0-preview.7.20309.9">
+    <Dependency Name="Microsoft.NET.ILLink.Analyzers" Version="6.0.100-preview.5.21226.4">
+      <Uri>https://github.com/mono/linker</Uri>
+      <Sha>4f95e906b0c5d9514b77179105e7758f2c4b7c1c</Sha>
+    </Dependency>
+    <Dependency Name="System.CodeDom" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>e2ed3631b9a2a97de10991e4b548f63086cdc67a</Sha>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="System.Security.Cryptography.ProtectedData" Version="5.0.0-preview.7.20309.9">
+    <Dependency Name="System.Security.Cryptography.ProtectedData" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>e2ed3631b9a2a97de10991e4b548f63086cdc67a</Sha>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="System.Text.Encoding.CodePages" Version="5.0.0-preview.7.20309.9">
+    <Dependency Name="System.Text.Encoding.CodePages" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>e2ed3631b9a2a97de10991e4b548f63086cdc67a</Sha>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="System.Resources.Extensions" Version="5.0.0-preview.7.20309.9">
+    <Dependency Name="System.Resources.Extensions" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/runtime</Uri>
-      <Sha>e2ed3631b9a2a97de10991e4b548f63086cdc67a</Sha>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.WindowsDesktop.App" Version="5.0.0-preview.7.20310.1">
+    <Dependency Name="Microsoft.WindowsDesktop.App.Runtime.win-x64" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/windowsdesktop</Uri>
-      <Sha>6a908afbf99fc8885420a8fba3b0462aa05ce9c9</Sha>
+      <Sha>9570a321daf2bd6756b91a0866bb8e0d7874190d</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.NET.Sdk.WindowsDesktop" Version="5.0.0-preview.7.20310.1" CoherentParentDependency="Microsoft.WindowsDesktop.App">
+    <Dependency Name="VS.Redist.Common.WindowsDesktop.SharedFramework.x64.6.0" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/windowsdesktop</Uri>
+      <Sha>9570a321daf2bd6756b91a0866bb8e0d7874190d</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.WindowsDesktop.App.Ref" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/windowsdesktop</Uri>
+      <Sha>9570a321daf2bd6756b91a0866bb8e0d7874190d</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.NET.Sdk.WindowsDesktop" Version="6.0.0-preview.5.21226.1" CoherentParentDependency="Microsoft.WindowsDesktop.App.Ref">
       <Uri>https://github.com/dotnet/wpf</Uri>
-      <Sha>5cb2d38d775a74a9d3ff99d96a471da6ee9b2ebc</Sha>
+      <Sha>40775430dc86d110ba7b83ca5a898b8f4e9335e7</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.AspNetCore.Analyzers" Version="5.0.0-preview.7.20310.10">
+    <Dependency Name="Microsoft.AspNetCore.App.Ref" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/aspnetcore</Uri>
-      <Sha>e929dab4966495dd8d70acb34ac0f0e151f05cfe</Sha>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.AspNetCore.Components.Analyzers" Version="5.0.0-preview.7.20310.10">
+    <Dependency Name="Microsoft.AspNetCore.App.Ref.Internal" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/aspnetcore</Uri>
-      <Sha>e929dab4966495dd8d70acb34ac0f0e151f05cfe</Sha>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.AspNetCore.Mvc.Analyzers" Version="5.0.0-preview.7.20310.10">
+    <Dependency Name="Microsoft.AspNetCore.App.Runtime.win-x64" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/aspnetcore</Uri>
-      <Sha>e929dab4966495dd8d70acb34ac0f0e151f05cfe</Sha>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.AspNetCore.Mvc.Api.Analyzers" Version="5.0.0-preview.7.20310.10">
+    <Dependency Name="VS.Redist.Common.AspNetCore.SharedFramework.x64.6.0" Version="6.0.0-preview.5.21226.1">
       <Uri>https://github.com/dotnet/aspnetcore</Uri>
-      <Sha>e929dab4966495dd8d70acb34ac0f0e151f05cfe</Sha>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.Web.Xdt" Version="3.0.0" Pinned="true">
+    <Dependency Name="dotnet-dev-certs" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/aspnetcore</Uri>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
+    </Dependency>
+    <Dependency Name="dotnet-user-secrets" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/aspnetcore</Uri>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.AspNetCore.Analyzers" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/aspnetcore</Uri>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.AspNetCore.Components.Analyzers" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/aspnetcore</Uri>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.AspNetCore.Mvc.Analyzers" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/aspnetcore</Uri>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.AspNetCore.Mvc.Api.Analyzers" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/aspnetcore</Uri>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.AspNetCore.Mvc.Razor.Extensions" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/aspnetcore</Uri>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.CodeAnalysis.Razor" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/aspnetcore</Uri>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.AspNetCore.Razor.Language" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/aspnetcore</Uri>
+      <Sha>dfbc4e2c8862d58a84e4f0437164fae00603a1ec</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.Web.Xdt" Version="3.1.0" Pinned="true">
       <Uri>https://github.com/aspnet/xdt</Uri>
       <Sha>c01a538851a8ab1a1fbeb2e6243f391fff7587b4</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.CodeAnalysis.NetAnalyzers" Version="3.3.0-beta1.20305.4">
+    <Dependency Name="Microsoft.CodeAnalysis.NetAnalyzers" Version="6.0.0-preview5.21223.3">
       <Uri>https://github.com/dotnet/roslyn-analyzers</Uri>
-      <Sha>596f8f422003d89b65e2bd50dc5a1aea7ce4ce91</Sha>
+      <Sha>153c62844094b3eb6f388aeb14eb95ad66b33388</Sha>
     </Dependency>
   </ProductDependencies>
   <ToolsetDependencies>
-    <Dependency Name="Microsoft.DotNet.Arcade.Sdk" Version="5.0.0-beta.20280.1">
+    <Dependency Name="Microsoft.DotNet.Arcade.Sdk" Version="6.0.0-beta.21222.1">
       <Uri>https://github.com/dotnet/arcade</Uri>
-      <Sha>fef373440d604c428950236fbc2b99ce0df368a9</Sha>
+      <Sha>b7279bb45342c948ab46fea2d08ec17ae2f2a1bf</Sha>
+      <SourceBuild RepoName="arcade" ManagedOnly="true" />
     </Dependency>
-    <Dependency Name="Microsoft.DotNet.Helix.Sdk" Version="5.0.0-beta.20280.1">
+    <Dependency Name="Microsoft.DotNet.Helix.Sdk" Version="6.0.0-beta.21222.1">
       <Uri>https://github.com/dotnet/arcade</Uri>
-      <Sha>fef373440d604c428950236fbc2b99ce0df368a9</Sha>
+      <Sha>b7279bb45342c948ab46fea2d08ec17ae2f2a1bf</Sha>
     </Dependency>
-    <Dependency Name="Microsoft.DotNet.SignTool" Version="5.0.0-beta.20280.1">
+    <Dependency Name="Microsoft.DotNet.SignTool" Version="6.0.0-beta.21222.1">
       <Uri>https://github.com/dotnet/arcade</Uri>
-      <Sha>fef373440d604c428950236fbc2b99ce0df368a9</Sha>
+      <Sha>b7279bb45342c948ab46fea2d08ec17ae2f2a1bf</Sha>
+    </Dependency>
+    <Dependency Name="Microsoft.DotNet.XUnitExtensions" Version="6.0.0-beta.21222.1">
+      <Uri>https://github.com/dotnet/arcade</Uri>
+      <Sha>b7279bb45342c948ab46fea2d08ec17ae2f2a1bf</Sha>
+    </Dependency>
+    <Dependency Name="System.Reflection.MetadataLoadContext" Version="6.0.0-preview.5.21226.1">
+      <Uri>https://github.com/dotnet/runtime</Uri>
+      <Sha>3782e6e41cfaf76ec9ae4117722f835596026b1a</Sha>
     </Dependency>
   </ToolsetDependencies>
 </Dependencies>

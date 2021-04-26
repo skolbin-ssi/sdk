@@ -9,6 +9,7 @@ using Microsoft.NET.TestFramework.Assertions;
 using Microsoft.NET.TestFramework.Commands;
 using System.Collections.Generic;
 using Xunit.Abstractions;
+using Microsoft.NET.TestFramework.ProjectConstruction;
 
 namespace Microsoft.NET.TestFramework
 {
@@ -20,17 +21,24 @@ namespace Microsoft.NET.TestFramework
 
         public string TestRoot => Path;
 
-        internal TestAsset(string testDestination, string sdkVersion) : base(testDestination, sdkVersion)
+        public ITestOutputHelper Log { get; }
+
+        //  The TestProject from which this asset was created, if any
+        public TestProject TestProject { get; set; }
+
+        internal TestAsset(string testDestination, string sdkVersion, ITestOutputHelper log) : base(testDestination, sdkVersion)
         {
+            Log = log;
         }
 
-        internal TestAsset(string testAssetRoot, string testDestination, string sdkVersion) : base(testDestination, sdkVersion)
+        internal TestAsset(string testAssetRoot, string testDestination, string sdkVersion, ITestOutputHelper log) : base(testDestination, sdkVersion)
         {
             if (string.IsNullOrEmpty(testAssetRoot))
             {
                 throw new ArgumentException("testAssetRoot");
             }
 
+            Log = log;
             _testAssetRoot = testAssetRoot;
         }
 
@@ -173,25 +181,9 @@ namespace Microsoft.NET.TestFramework
             return new RestoreCommand(log, System.IO.Path.Combine(TestRoot, relativePath));
         }
 
-        public NuGetRestoreCommand GetNuGetRestoreCommand(ITestOutputHelper log, string relativePath = "")
-        {
-            return new NuGetRestoreCommand(log, System.IO.Path.Combine(TestRoot, relativePath))
-                .AddSourcesFromCurrentConfig();
-        }
-
         public TestAsset Restore(ITestOutputHelper log, string relativePath = "", params string[] args)
         {
             var commandResult = GetRestoreCommand(log, relativePath)
-                .Execute(args);
-
-            commandResult.Should().Pass();
-
-            return this;
-        }
-
-        public TestAsset NuGetRestore(ITestOutputHelper log, string relativePath = "", params string[] args)
-        {
-            var commandResult = GetNuGetRestoreCommand(log, relativePath)
                 .Execute(args);
 
             commandResult.Should().Pass();

@@ -41,7 +41,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "MultipleFrameworkReferenceTest",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -52,7 +51,7 @@ namespace FrameworkReferenceTest
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -78,7 +77,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "MultipleFrameworkReferenceTest",
                 TargetFrameworks = tfm,
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -92,10 +90,10 @@ namespace FrameworkReferenceTest
 
             testProject.SourceFiles.Add("Program.cs", FrameworkReferenceEmptyProgramSource);
 
-            TestAsset testAsset = _testAssetsManager.CreateTestProject(testProject)
+            TestAsset testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: tfm)
                 .Restore(Log, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -123,7 +121,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "NETFrameworkTFMTest",
                 TargetFrameworks = "net472",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -133,7 +130,7 @@ namespace FrameworkReferenceTest
             TestAsset testAsset = _testAssetsManager.CreateTestProject(testProject)
                 .Restore(Log, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -152,7 +149,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "MultipleProfileFrameworkReferenceTest",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -163,7 +159,7 @@ namespace FrameworkReferenceTest
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -187,7 +183,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "UnknownFrameworkReferenceTest",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -206,7 +201,7 @@ namespace FrameworkReferenceTest
 
                 });
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -227,7 +222,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "FrameworkReferenceTest",
                 TargetFrameworks = targetFramework,
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -243,7 +237,7 @@ namespace FrameworkReferenceTest
                                                new XAttribute("Include", "Microsoft.ASPNETCORE.App")));
                 });
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             var result = buildCommand.Execute();
 
@@ -262,13 +256,51 @@ namespace FrameworkReferenceTest
         }
 
         [Fact]
+        public void KnownFrameworkReferencesOnlyApplyToCorrectTargetPlatform()
+        {
+            var testProject = new TestProject()
+            {
+                Name = "FrameworkReferenceTest",
+                TargetFrameworks = "net5.0-windows",
+                IsExe = true
+            };
+
+            var testAsset = _testAssetsManager.CreateTestProject(testProject)
+                .WithProjectChanges(project =>
+                {
+                    var ns = project.Root.Name.Namespace;
+
+                    var itemGroup = new XElement(ns + "ItemGroup");
+                    project.Root.Add(itemGroup);
+
+                    //  Add a KnownFrameworkReference where the TargetPlatformVersion matches but the TargetPlatformIdentifier does not
+
+                    itemGroup.Add(new XElement(ns + "KnownFrameworkReference",
+                                               new XAttribute("Include", "NonExistentTestFrameworkReference"),
+                                               new XAttribute("TargetFramework", "net5.0-notwindows7.0"),
+                                               new XAttribute("RuntimeFrameworkName", "NonExistentTestFrameworkReference"),
+                                               new XAttribute("DefaultRuntimeFrameworkVersion", "7.0"),
+                                               new XAttribute("LatestRuntimeFrameworkVersion", "7.0"),
+                                               new XAttribute("TargetingPackName", "NonExistentTestFrameworkReference"),
+                                               new XAttribute("TargetingPackVersion", "7.0")));
+                });
+
+            var buildCommand = new BuildCommand(testAsset);
+
+            //  The build should succeed because the fake KnownFrameworkReference should not match, and the SDK shouldn't try to download
+            //  the nonexistent targeting pack.
+            buildCommand.Execute()
+                .Should()
+                .Pass();
+        }
+
+        [Fact]
         public void TargetingPackDownloadCanBeDisabled()
         {
             var testProject = new TestProject()
             {
                 Name = "DisableTargetingPackDownload",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -282,12 +314,12 @@ namespace FrameworkReferenceTest
             string nugetPackagesFolder = Path.Combine(testAsset.TestRoot, "packages");
 
 
-            var restoreCommand = new RestoreCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name))
+            var restoreCommand = new RestoreCommand(testAsset)
                 .WithEnvironmentVariable("NUGET_PACKAGES", nugetPackagesFolder);
             restoreCommand.Execute().Should().Pass();
 
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name))
+            var buildCommand = new BuildCommand(testAsset)
                 .WithEnvironmentVariable("NUGET_PACKAGES", nugetPackagesFolder);
 
             buildCommand
@@ -309,15 +341,14 @@ namespace FrameworkReferenceTest
             {
                 Name = "RollForwardSetting",
                 TargetFrameworks = tfm,
-                IsSdkProject = true,
                 IsExe = true
             };
 
             testProject.AdditionalProperties["RollForward"] = rollForwardValue;
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: rollForwardValue + tfm);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             if (valid)
             {
@@ -359,15 +390,14 @@ namespace FrameworkReferenceTest
             {
                 Name = "RollForwardSettingNotSupported",
                 TargetFrameworks = "netcoreapp2.2",
-                IsSdkProject = true,
                 IsExe = true
             };
 
             testProject.AdditionalProperties["RollForward"] = rollForwardValue;
 
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: rollForwardValue.GetHashCode().ToString());
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             var result = buildCommand.Execute();
 
@@ -394,7 +424,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "RuntimePackNotAvailable",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true,
                 RuntimeIdentifier = "linux-x64"
             };
@@ -412,7 +441,7 @@ namespace FrameworkReferenceTest
                     itemGroup.Add(frameworkReference);
                 });
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 //  Pass "/clp:summary" so that we can check output for string "1 Error(s)"
@@ -432,14 +461,13 @@ namespace FrameworkReferenceTest
             {
                 Name = "RuntimePackNotAvailable",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true,
                 RuntimeIdentifier = "invalid-rid"
             };
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var restoreCommand = new RestoreCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var restoreCommand = new RestoreCommand(testAsset);
 
             restoreCommand
                 //  Pass "/clp:summary" so that we can check output for string "1 Error(s)"
@@ -459,7 +487,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "RuntimePackNotRestored",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true,
             };
             
@@ -470,14 +497,14 @@ namespace FrameworkReferenceTest
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var restoreCommand = new RestoreCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var restoreCommand = new RestoreCommand(testAsset);
 
             restoreCommand
                 .Execute()
                 .Should()
                 .Pass();
 
-            var buildCommand = new BuildCommand(Log, testAsset.TestRoot, testProject.Name);
+            var buildCommand = new BuildCommand(testAsset);
 
             //  If we do the work in https://github.com/dotnet/cli/issues/10528,
             //  then we should add a new error message here indicating that the runtime pack hasn't
@@ -651,7 +678,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "TransitiveFrameworkReference",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -659,7 +685,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "ReferencedProject",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true
             };
 
             referencedProject.FrameworkReferences.Add("Microsoft.ASPNETCORE.App");
@@ -668,7 +693,7 @@ namespace FrameworkReferenceTest
 
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var buildCommand = new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name));
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -692,7 +717,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "ReferencedPackage",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true
             };
             referencedPackage.FrameworkReferences.Add("Microsoft.ASPNETCORE.App");
 
@@ -710,7 +734,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "TransitiveFrameworkReference",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 
@@ -722,7 +745,7 @@ namespace FrameworkReferenceTest
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
             string nugetPackagesFolder = Path.Combine(testAsset.TestRoot, "packages");
 
-            var buildCommand = (BuildCommand) new BuildCommand(Log, Path.Combine(testAsset.TestRoot, testProject.Name))
+            var buildCommand = (BuildCommand) new BuildCommand(testAsset)
                 .WithEnvironmentVariable("NUGET_PACKAGES", nugetPackagesFolder);
 
             buildCommand
@@ -791,7 +814,6 @@ namespace FrameworkReferenceTest
             var testProject = new TestProject()
             {
                 Name = "ResolvedFrameworkReferenceTest",
-                IsSdkProject = true,
                 IsExe = true,
                 TargetFrameworks = "netcoreapp3.0",
                 RuntimeIdentifier = EnvironmentInfo.GetCompatibleRid()
@@ -804,7 +826,7 @@ namespace FrameworkReferenceTest
 
             var projectFolder = Path.Combine(testAsset.TestRoot, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, projectFolder);
+            var buildCommand = new BuildCommand(testAsset);
 
             var expectedMetadata = new[]
             {
@@ -903,6 +925,35 @@ namespace FrameworkReferenceTest
                 selfContained);
         }
 
+        [CoreMSBuildOnlyFact]
+        public void TransitiveFrameworkReferencesAreNotIncludedInRestore()
+        {
+            var testProject = new TestProject()
+            {
+                Name = "TransitiveFrameworkRef",
+                TargetFrameworks = "net5.0",
+                IsSdkProject = true
+            };
+            testProject.PackageReferences.Add(new TestPackageReference("Microsoft.AspNetCore.Authentication.JwtBearer", "5.0.0"));
+            var testAsset = _testAssetsManager.CreateTestProject(testProject).WithProjectChanges((project) =>
+            {
+                var ns = project.Root.Name.Namespace;
+                var target = XElement.Parse(@"  <Target Name=""GetFrameworkRefResults"" AfterTargets=""Build"" DependsOnTargets=""CollectFrameworkReferences"" >
+    <Message Text=""Framework References: @(_FrameworkReferenceForRestore)"" Importance=""High"" />
+  </Target>");
+                project.Root.Add(target);
+            });
+
+            var buildCommand = new BuildCommand(testAsset);
+            buildCommand.Execute()
+                .Should()
+                .Pass()
+                .And
+                .HaveStdOutContaining("Microsoft.NETCore.App")
+                .And
+                .NotHaveStdOutContaining("Microsoft.AspNetCore.App");
+        }
+
         private void TestFrameworkReferenceProfiles(
             IEnumerable<string> frameworkReferences,
             IEnumerable<string> expectedReferenceNames,
@@ -914,7 +965,6 @@ namespace FrameworkReferenceTest
             {
                 Name = "WindowsFormsFrameworkReference",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
             testProject.FrameworkReferences.AddRange(frameworkReferences);
@@ -930,7 +980,7 @@ namespace FrameworkReferenceTest
 
             string projectFolder = Path.Combine(testAsset.TestRoot, testProject.Name);
 
-            var buildCommand = new BuildCommand(Log, projectFolder);
+            var buildCommand = new BuildCommand(testAsset);
 
             buildCommand
                 .Execute()
@@ -1004,7 +1054,6 @@ namespace FrameworkReferenceTest
         {
             testProject.Name = "ResolvedVersionsTest";
             testProject.TargetFrameworks = "netcoreapp3.0";
-            testProject.IsSdkProject = true;
             testProject.IsExe = true;
             testProject.AdditionalProperties["DisableImplicitFrameworkReferences"] = "true";
             testProject.RuntimeIdentifier = EnvironmentInfo.GetCompatibleRid(testProject.TargetFrameworks);
@@ -1080,7 +1129,6 @@ namespace FrameworkReferenceTest
 
             testProject.Name = "TrimInfoTest";
             testProject.TargetFrameworks = targetFramework;;
-            testProject.IsSdkProject = true;
             testProject.IsExe = true;
             testProject.RuntimeIdentifier = EnvironmentInfo.GetCompatibleRid(testProject.TargetFrameworks);
 

@@ -37,9 +37,9 @@ namespace Microsoft.NET.Publish.Tests
         public void RunPublishItemsOutputGroupTest(bool specifyRid, bool singleFile)
         {
             var testProject = this.SetupProject(specifyRid, singleFile);
-            var testAsset = _testAssetsManager.CreateTestProject(testProject);
+            var testAsset = _testAssetsManager.CreateTestProject(testProject, identifier: specifyRid.ToString() + singleFile.ToString());
 
-            var restoreCommand = new RestoreCommand(Log, testAsset.Path, testProject.Name);
+            var restoreCommand = new RestoreCommand(testAsset);
             restoreCommand
                 .Execute()
                 .Should()
@@ -104,13 +104,13 @@ namespace Microsoft.NET.Publish.Tests
             var testProject = this.SetupProject();
             var testAsset = _testAssetsManager.CreateTestProject(testProject);
 
-            var restoreCommand = new RestoreCommand(Log, testAsset.Path, testProject.Name);
+            var restoreCommand = new RestoreCommand(testAsset);
             restoreCommand
                 .Execute()
                 .Should()
                 .Pass();
 
-            var buildCommand = new BuildCommand(Log, testAsset.Path, testProject.Name);
+            var buildCommand = new BuildCommand(testAsset);
             buildCommand
                 .Execute("/p:RuntimeIdentifier=win-x86;DesignTimeBuild=true", "/t:PublishItemsOutputGroup")
                 .Should()
@@ -129,7 +129,6 @@ namespace Microsoft.NET.Publish.Tests
             {
                 Name = "TestPublishOutputGroup",
                 TargetFrameworks = "netcoreapp3.0",
-                IsSdkProject = true,
                 IsExe = true
             };
 

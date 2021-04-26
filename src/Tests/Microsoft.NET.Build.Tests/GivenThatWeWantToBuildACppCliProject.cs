@@ -27,12 +27,12 @@ namespace Microsoft.NET.Build.Tests
                 .WithSource();
 
             // build projects separately with BuildProjectReferences=false to simulate VS build behavior
-            new BuildCommand(Log, Path.Combine(testAsset.TestRoot, "NETCoreCppCliTest"))
+            new BuildCommand(testAsset, "NETCoreCppCliTest")
                 .Execute("-p:Platform=x64")
                 .Should()
                 .Pass();
 
-            new BuildCommand(Log, Path.Combine(testAsset.TestRoot, "CSConsoleApp"))
+            new BuildCommand(testAsset, "CSConsoleApp")
                 .Execute(new string[] { "-p:Platform=x64", "-p:BuildProjectReferences=false" })
                 .Should()
                 .Pass();
@@ -59,7 +59,7 @@ namespace Microsoft.NET.Build.Tests
                 .CopyTestAsset("NetCoreCsharpAppReferenceCppCliLib")
                 .WithSource();
 
-            new BuildCommand(Log, Path.Combine(testAsset.TestRoot, "NETCoreCppCliTest"))
+            new BuildCommand(testAsset, "NETCoreCppCliTest")
                 .Execute("-p:Platform=x64")
                 .Should()
                 .Pass();
@@ -72,13 +72,13 @@ namespace Microsoft.NET.Build.Tests
                 .CopyTestAsset("CppCliLibWithWpfFrameworkReference")
                 .WithSource();
 
-            new BuildCommand(Log, testAsset.TestRoot)
+            new BuildCommand(testAsset)
                 .Execute("-p:Platform=x64")
                 .Should()
                 .Pass();
         }
 
-        [FullMSBuildOnlyFact]
+        [FullMSBuildOnlyFact(Skip = "https://github.com/dotnet/sdk/issues/11008")]
         public void It_fails_with_error_message_on_EnableComHosting()
         {
             var testAsset = _testAssetsManager
@@ -98,7 +98,7 @@ namespace Microsoft.NET.Build.Tests
                     }
                 });
 
-            new BuildCommand(Log, Path.Combine(testAsset.TestRoot, "NETCoreCppCliTest"))
+            new BuildCommand(testAsset, "NETCoreCppCliTest")
                 .Execute("-p:Platform=x64")
                 .Should()
                 .Fail()
@@ -106,7 +106,7 @@ namespace Microsoft.NET.Build.Tests
                 .HaveStdOutContaining(Strings.NoSupportCppEnableComHosting);
         }
 
-        [FullMSBuildOnlyFact]
+        [FullMSBuildOnlyFact(Skip = "https://github.com/dotnet/sdk/issues/11008")]
         public void It_fails_with_error_message_on_fullframework()
         {
             var testAsset = _testAssetsManager
@@ -115,7 +115,7 @@ namespace Microsoft.NET.Build.Tests
                 .WithProjectChanges((projectPath, project) =>
                     ChangeTargetFramework(projectPath, project, "net472"));
 
-            new BuildCommand(Log, Path.Combine(testAsset.TestRoot, "NETCoreCppCliTest"))
+            new BuildCommand(testAsset, "NETCoreCppCliTest")
                 .Execute("-p:Platform=x64")
                 .Should()
                 .Fail()
@@ -123,7 +123,7 @@ namespace Microsoft.NET.Build.Tests
                 .HaveStdOutContaining(Strings.NETFrameworkWithoutUsingNETSdkDefaults);
         }
 
-        [FullMSBuildOnlyFact]
+        [FullMSBuildOnlyFact(Skip = "https://github.com/dotnet/sdk/issues/11008")]
         public void It_fails_with_error_message_on_tfm_lower_than_3_1()
         {
             var testAsset = _testAssetsManager
@@ -132,7 +132,7 @@ namespace Microsoft.NET.Build.Tests
                 .WithProjectChanges((projectPath, project) =>
                     ChangeTargetFramework(projectPath, project, "netcoreapp3.0"));
 
-            new BuildCommand(Log, Path.Combine(testAsset.TestRoot, "NETCoreCppCliTest"))
+            new BuildCommand(testAsset, "NETCoreCppCliTest")
                 .Execute("-p:Platform=x64")
                 .Should()
                 .Fail()
@@ -140,14 +140,14 @@ namespace Microsoft.NET.Build.Tests
                 .HaveStdOutContaining(Strings.CppRequiresTFMVersion31);
         }
 
-        [FullMSBuildOnlyFact]
+        [FullMSBuildOnlyFact(Skip = "https://github.com/dotnet/sdk/issues/11008")]
         public void When_run_with_selfcontained_It_fails_with_error_message()
         {
             var testAsset = _testAssetsManager
                 .CopyTestAsset("NetCoreCsharpAppReferenceCppCliLib")
                 .WithSource();
 
-            new BuildCommand(Log, Path.Combine(testAsset.TestRoot, "NETCoreCppCliTest"))
+            new BuildCommand(testAsset, "NETCoreCppCliTest")
                 .Execute("-p:Platform=x64", "-p:selfcontained=true", "-p:RuntimeIdentifier=win-x64")
                 .Should()
                 .Fail()
