@@ -83,9 +83,9 @@ namespace Microsoft.NET.Build.Tests
                 expectedInfo.Remove(attributeToOptOut);
             }
 
-            expectedInfo.Add("TargetFrameworkAttribute", ".NETCoreApp,Version=v2.1");
+            expectedInfo.Add("TargetFrameworkAttribute", $".NETCoreApp,Version=v{ToolsetInfo.CurrentTargetFrameworkVersion}");
 
-            var assemblyPath = Path.Combine(buildCommand.GetOutputDirectory("netcoreapp2.1", "Release").FullName, "HelloWorld.dll");
+            var assemblyPath = Path.Combine(buildCommand.GetOutputDirectory(ToolsetInfo.CurrentTargetFramework, "Release").FullName, "HelloWorld.dll");
             var actualInfo = AssemblyInfo.Get(assemblyPath);
 
             actualInfo.Should().Equal(expectedInfo);
@@ -344,7 +344,7 @@ namespace Microsoft.NET.Build.Tests
                 return command;
             }
         }
-        
+
         [Fact]
         public void It_includes_internals_visible_to()
         {
@@ -370,6 +370,111 @@ namespace Microsoft.NET.Build.Tests
             AssemblyInfo.Get(assemblyPath)["InternalsVisibleToAttribute"].Should().Be("Tests");
         }
 
+        [RequiresMSBuildVersionTheory("17.0.0.32901")]
+        [InlineData(true, true, "net5.0")]
+        [InlineData(true, true, ToolsetInfo.CurrentTargetFramework)]
+        [InlineData(true, false, ToolsetInfo.CurrentTargetFramework)]
+        [InlineData(false, false, ToolsetInfo.CurrentTargetFramework)]
+        public void TestPreviewFeatures(bool enablePreviewFeatures, bool generateRequiresPreviewFeaturesAttribute, string targetFramework)
+        {
+            var testAsset = _testAssetsManager
+                .CopyTestAsset("HelloWorld", identifier: $"{enablePreviewFeatures}${generateRequiresPreviewFeaturesAttribute}${targetFramework}")
+                .WithSource()
+                .WithTargetFramework(targetFramework)
+                .WithProjectChanges((path, project) =>
+                {
+                    var ns = project.Root.Name.Namespace;
+
+                    project.Root.Add(
+                        new XElement(ns + "PropertyGroup",
+                            new XElement(ns + "EnablePreviewFeatures", $"{enablePreviewFeatures}")));
+
+                    if (enablePreviewFeatures && !generateRequiresPreviewFeaturesAttribute)
+                    {
+                        project.Root.Add(
+                            new XElement(ns + "PropertyGroup",
+                                new XElement(ns + "GenerateRequiresPreviewFeaturesAttribute", $"False")));
+                    }
+                });
+
+            var buildCommand = new BuildCommand(testAsset);
+            buildCommand.Execute().Should().Pass();
+
+            var assemblyPath = Path.Combine(buildCommand.GetOutputDirectory(targetFramework).FullName, "HelloWorld.dll");
+
+            var parameterlessAttributes = AssemblyInfo.GetParameterlessAttributes(assemblyPath);
+            bool contains = false;
+            foreach (var attribute in parameterlessAttributes)
+            {
+                if (attribute.Equals("RequiresPreviewFeaturesAttribute", System.StringComparison.Ordinal))
+                {
+                    contains = true;
+                    break;
+                }
+            }
+
+            var getValuesCommand = new GetValuesCommand(testAsset, "LangVersion", targetFramework: targetFramework);
+            getValuesCommand.Execute().Should().Pass();
+
+            var values = getValuesCommand.GetValues();
+            var langVersion = values.FirstOrDefault() ?? string.Empty;
+
+            if (enablePreviewFeatures && generateRequiresPreviewFeaturesAttribute)
+            {
+                if (targetFramework == ToolsetInfo.CurrentTargetFramework)
+                {
+                    Assert.Equal("Preview", langVersion);
+                    Assert.True(contains);
+                }
+                else
+                {
+                    // The assembly level attribute is generated only for the latest TFM for the given sdk
+                    Assert.False(contains);
+                    Assert.NotEqual("Preview", langVersion);
+                }
+            }
+
+            if (!generateRequiresPreviewFeaturesAttribute)
+            {
+                Assert.False(contains);
+            }
+        }
+
+        [RequiresMSBuildVersionFact("17.0.0.32901")]
+        public void It_doesnt_includes_requires_preview_features()
+        {
+            var testAsset = _testAssetsManager
+                .CopyTestAsset("HelloWorld")
+                .WithSource()
+                .WithTargetFramework(ToolsetInfo.CurrentTargetFramework)
+                .WithProjectChanges((path, project) =>
+                {
+                    var ns = project.Root.Name.Namespace;
+
+                    project.Root.Add(
+                        new XElement(ns + "PropertyGroup",
+                            new XElement(ns + "EnablePreviewFeatures", "false")));
+                });
+
+            var buildCommand = new BuildCommand(testAsset);
+            buildCommand.Execute().Should().Pass();
+
+            var assemblyPath = Path.Combine(buildCommand.GetOutputDirectory(ToolsetInfo.CurrentTargetFramework).FullName, "HelloWorld.dll");
+
+            var parameterlessAttributes = AssemblyInfo.GetParameterlessAttributes(assemblyPath);
+            bool contains = false;
+            foreach (var attribute in parameterlessAttributes)
+            {
+                if (attribute.Equals("RequiresPreviewFeaturesAttribute", System.StringComparison.Ordinal))
+                {
+                    contains = true;
+                    break;
+                }
+            }
+
+            Assert.False(contains);
+        }
+
         [Fact]
         public void It_respects_out_out_of_internals_visible_to()
         {
@@ -382,7 +487,7 @@ namespace Microsoft.NET.Build.Tests
                     var ns = project.Root.Name.Namespace;
 
                     project.Root.Add(
-                        new XElement(ns + "PropertyGroup", 
+                        new XElement(ns + "PropertyGroup",
                             new XElement(ns + "GenerateInternalsVisibleToAttributes", "false")),
                         new XElement(ns + "ItemGroup",
                             new XElement(ns + "InternalsVisibleTo",
@@ -651,7 +756,7 @@ namespace Microsoft.NET.Build.Tests
             else
             {
                 AssemblyInfo.Get(assemblyPath).ContainsKey("AssemblyMetadataAttribute").Should().Be(false);
-            } 
+            }
         }
     }
 }

@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <HelixType>test/product/</HelixType>
-    <Creator Condition="'$(BUILD_BUILDNUMBER)' != ''">sdk-dev</Creator>
+    <Creator Condition="'$(BUILD_BUILDNUMBER)' != '' and '$(HelixAccessToken)' == ''">sdk-dev</Creator>
 
     <IncludeDotNetCli>false</IncludeDotNetCli>
 
@@ -13,10 +13,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <SDKCustomXUnitProject Include="**\*.Tests.csproj"/>
+    <SDKCustomXUnitProject Condition="'$(RunAoTTests)' != 'true'" Include="**\*.Tests.csproj" Exclude="**\*.AoT.Tests.csproj" />
+    <SDKCustomXUnitProject Condition="'$(RunAoTTests)' == 'true'" Include="**\*.AoT.Tests.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(HelixAccessToken)' == '' ">
+  <ItemGroup Condition=" '$(_CustomHelixTargetQueue)' != '' ">
     <HelixTargetQueue Include="$(_CustomHelixTargetQueue)"/>
   </ItemGroup>
 
@@ -66,7 +67,7 @@
   </Target>
 
 
-  <Target Name="AppendHelixPreCommand" AfterTargets="AddXUnitReporter" DependsOnTargets="CopyHelixFiles">
+  <Target Name="AppendHelixPreCommand" BeforeTargets="CoreTest" DependsOnTargets="CopyHelixFiles">
     <PropertyGroup>
       <HelixPreCommands Condition="!$(IsPosixShell)">call %HELIX_CORRELATION_PAYLOAD%\t\RunTestsOnHelix.cmd $(TestFullMSBuild);$(HelixPreCommands)</HelixPreCommands>
       <HelixPreCommands Condition="$(IsPosixShell)">. $HELIX_CORRELATION_PAYLOAD/t/RunTestsOnHelix.sh;$(HelixPreCommands)</HelixPreCommands>

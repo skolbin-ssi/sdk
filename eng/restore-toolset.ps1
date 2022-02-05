@@ -21,6 +21,7 @@ function InitializeCustomSDKToolset {
   InstallDotNetSharedFramework "2.2.8"
   InstallDotNetSharedFramework "3.1.0"
   InstallDotNetSharedFramework "5.0.0"
+  InstallDotNetSharedFramework "6.0.0-rc.2.21452.2"
 
   CreateBuildEnvScript
   InstallNuget
@@ -43,7 +44,6 @@ function CreateBuildEnvScript()
   $scriptContents = @"
 @echo off
 title SDK Build ($RepoRoot)
-set DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 set DOTNET_MULTILEVEL_LOOKUP=0
 
 set DOTNET_ROOT=$env:DOTNET_INSTALL_DIR
@@ -64,7 +64,7 @@ function InstallDotNetSharedFramework([string]$version) {
 
   if (!(Test-Path $fxDir)) {
     $installScript = GetDotNetInstallScript $dotnetRoot
-    & $installScript -Version $version -InstallDir $dotnetRoot -Runtime "dotnet"
+    & $installScript -Version $version -InstallDir $dotnetRoot -Runtime "dotnet" -SkipNonVersionedFiles
 
     if($lastExitCode -ne 0) {
       throw "Failed to install shared Framework $version to '$dotnetRoot' (exit code '$lastExitCode')."

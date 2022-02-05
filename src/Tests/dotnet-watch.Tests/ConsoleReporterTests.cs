@@ -4,7 +4,6 @@
 using System;
 using System.IO;
 using System.Text;
-using System.Threading;
 using Xunit;
 
 namespace Microsoft.Extensions.Tools.Internal
@@ -13,28 +12,59 @@ namespace Microsoft.Extensions.Tools.Internal
     {
         private static readonly string EOL = Environment.NewLine;
 
-        [Fact]
-        public void WritesToStandardStreams()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void WritesToStandardStreams(bool suppressEmojis)
         {
             var testConsole = new TestConsole();
-            var reporter = new ConsoleReporter(testConsole, verbose: true, quiet: false);
+            var reporter = new ConsoleReporter(testConsole, verbose: true, quiet: false, suppressEmojis: suppressEmojis);
+            var dotnetWatchDefaultPrefix = $"dotnet watch {(suppressEmojis ? ":" : "⌚")} ";
 
             // stdout
             reporter.Verbose("verbose");
-            Assert.Equal("verbose" + EOL, testConsole.GetOutput());
+            Assert.Equal($"{dotnetWatchDefaultPrefix}verbose" + EOL, testConsole.GetOutput());
             testConsole.Clear();
 
             reporter.Output("out");
-            Assert.Equal("out" + EOL, testConsole.GetOutput());
+            Assert.Equal($"{dotnetWatchDefaultPrefix}out" + EOL, testConsole.GetOutput());
             testConsole.Clear();
 
             reporter.Warn("warn");
-            Assert.Equal("warn" + EOL, testConsole.GetOutput());
+            Assert.Equal($"{dotnetWatchDefaultPrefix}warn" + EOL, testConsole.GetOutput());
             testConsole.Clear();
 
             // stderr
             reporter.Error("error");
-            Assert.Equal("error" + EOL, testConsole.GetError());
+            Assert.Equal($"dotnet watch {(suppressEmojis ? ":" : "❌")} error" + EOL, testConsole.GetError());
+            testConsole.Clear();
+        }
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void WritesToStandardStreamsWithCustomEmojis(bool suppressEmojis)
+        {
+            var testConsole = new TestConsole();
+            var reporter = new ConsoleReporter(testConsole, verbose: true, quiet: false, suppressEmojis: suppressEmojis);
+            var dotnetWatchDefaultPrefix = $"dotnet watch {(suppressEmojis ? ":" : "😄")}";
+
+            // stdout
+            reporter.Verbose("verbose", emoji: "😄");
+            Assert.Equal($"{dotnetWatchDefaultPrefix} verbose" + EOL, testConsole.GetOutput());
+            testConsole.Clear();
+
+            reporter.Output("out", emoji: "😄");
+            Assert.Equal($"{dotnetWatchDefaultPrefix} out" + EOL, testConsole.GetOutput());
+            testConsole.Clear();
+
+            reporter.Warn("warn", emoji: "😄");
+            Assert.Equal($"{dotnetWatchDefaultPrefix} warn" + EOL, testConsole.GetOutput());
+            testConsole.Clear();
+
+            // stderr
+            reporter.Error("error", emoji: "😄");
+            Assert.Equal($"{dotnetWatchDefaultPrefix} error" + EOL, testConsole.GetError());
             testConsole.Clear();
         }
 
@@ -42,6 +72,12 @@ namespace Microsoft.Extensions.Tools.Internal
         {
             private readonly StringBuilder _out;
             private readonly StringBuilder _error;
+
+            event Action<ConsoleKeyInfo> IConsole.KeyPressed
+            {
+                add { }
+                remove { }
+            }
 
             public TestConsole()
             {
@@ -70,8 +106,6 @@ namespace Microsoft.Extensions.Tools.Internal
             {
                 ForegroundColor = default(ConsoleColor);
             }
-
-            public CancellationToken ListenForForceReloadRequest() => default;
 
             public TextWriter Out { get; }
             public TextWriter Error { get; }

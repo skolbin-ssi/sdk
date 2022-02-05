@@ -1,9 +1,8 @@
-// Copyright (c) .NET Foundation. All rights reserved.
+﻿// Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -17,31 +16,29 @@ namespace Microsoft.DotNet.Watcher.Tools
         private static readonly Regex NowListeningRegex = new Regex(@"Now listening on: (?<url>.*)\s*$", RegexOptions.None | RegexOptions.Compiled, TimeSpan.FromSeconds(10));
         private readonly bool _runningInTest;
         private readonly bool _suppressLaunchBrowser;
-        private readonly bool _suppressBrowserRefresh;
         private readonly string _browserPath;
-
         private bool _attemptedBrowserLaunch;
         private Process _browserProcess;
-        private BrowserRefreshServer _refreshServer;
         private IReporter _reporter;
         private string _launchPath;
         private CancellationToken _cancellationToken;
+        private DotNetWatchContext _watchContext;
 
-        public LaunchBrowserFilter(DotNetWatchOptions dotNetWatchOptions)
+        public LaunchBrowserFilter(DotNetWatchOptions dotNetWatchOptions, bool allowBrowserRefreshWithoutLaunchBrowser = false)
         {
             _suppressLaunchBrowser = dotNetWatchOptions.SuppressLaunchBrowser;
-            _suppressBrowserRefresh = dotNetWatchOptions.SuppressBrowserRefresh;
             _runningInTest = dotNetWatchOptions.RunningAsTest;
-
             _browserPath = Environment.GetEnvironmentVariable("DOTNET_WATCH_BROWSER_PATH");
         }
 
-        public async ValueTask ProcessAsync(DotNetWatchContext context, CancellationToken cancellationToken)
+        public ValueTask ProcessAsync(DotNetWatchContext context, CancellationToken cancellationToken)
         {
             if (_suppressLaunchBrowser)
             {
-                return;
+                return default;
             }
+
+            _watchContext = context;
 
             if (context.Iteration == 0)
             {
@@ -56,27 +53,10 @@ namespace Microsoft.DotNet.Watcher.Tools
                     // We've redirected the output, but want to ensure that it continues to appear in the user's console.
                     context.ProcessSpec.OnOutput += (_, eventArgs) => Console.WriteLine(eventArgs.Data);
                     context.ProcessSpec.OnOutput += OnOutput;
-
-                    if (!_suppressBrowserRefresh)
-                    {
-                        _refreshServer = new BrowserRefreshServer(context.Reporter);
-                        context.BrowserRefreshServer = _refreshServer;
-                        var serverUrl = await _refreshServer.StartAsync(cancellationToken);
-
-                        context.Reporter.Verbose($"Refresh server running at {serverUrl}.");
-                        context.ProcessSpec.EnvironmentVariables["ASPNETCORE_AUTO_RELOAD_WS_ENDPOINT"] = serverUrl;
-
-                        var pathToMiddleware = Path.Combine(AppContext.BaseDirectory, "middleware", "Microsoft.AspNetCore.Watch.BrowserRefresh.dll");
-                        context.ProcessSpec.EnvironmentVariables.DotNetStartupHooks.Add(pathToMiddleware);
-                        context.ProcessSpec.EnvironmentVariables.AspNetCoreHostingStartupAssemblies.Add("Microsoft.AspNetCore.Watch.BrowserRefresh");
-                    }
                 }
             }
-            else if (!_suppressBrowserRefresh)
-            {
-                // We've detected a change. Notify the browser.
-                await (_refreshServer?.SendWaitMessageAsync(cancellationToken) ?? default);
-            }
+
+            return default;
         }
 
         private void OnOutput(object sender, DataReceivedEventArgs eventArgs)
@@ -117,20 +97,20 @@ namespace Microsoft.DotNet.Watcher.Tools
                         // From emperical observation, it's noted that failing to launch a browser results in either Process.Start returning a null-value
                         // or for the process to have immediately exited.
                         // We can use this to provide a helpful message.
-                        _reporter.Output($"Unable to launch the browser. Navigate to {launchUrl}");
+                        _reporter.Output($"Unable to launch the browser. Navigate to {launchUrl}", emoji: "🌐");
                     }
                 }
-                else
+                else if (_watchContext?.BrowserRefreshServer is { } browserRefresh)
                 {
                     _reporter.Verbose("Reloading browser.");
-                    _ = _refreshServer?.ReloadAsync(_cancellationToken);
+                    _ = browserRefresh.ReloadAsync(_cancellationToken);
                 }
             }
         }
 
         private void LaunchBrowser(string launchUrl)
         {
-            var fileName = launchUrl + "/" + _launchPath;
+            var fileName = Uri.TryCreate(_launchPath, UriKind.Absolute, out _) ? _launchPath : launchUrl + "/" + _launchPath;
             var args = string.Empty;
             if (!string.IsNullOrEmpty(_browserPath))
             {
@@ -181,13 +161,10 @@ namespace Microsoft.DotNet.Watcher.Tools
             return true;
         }
 
-        public async ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
         {
             _browserProcess?.Dispose();
-            if (_refreshServer != null)
-            {
-                await _refreshServer.DisposeAsync();
-            }
+            return default;
         }
     }
 }

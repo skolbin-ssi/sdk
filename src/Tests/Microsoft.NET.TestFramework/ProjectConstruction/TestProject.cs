@@ -59,7 +59,9 @@ namespace Microsoft.NET.TestFramework.ProjectConstruction
 
         public Dictionary<string, string> AdditionalProperties { get; } = new Dictionary<string, string>();
 
-        public Dictionary<string, Dictionary<string, string>> AdditionalItems { get; } = new Dictionary<string, Dictionary<string, string>>();
+        public List<KeyValuePair<string, Dictionary<string, string>>> AdditionalItems { get; } = new ();
+
+        public List<Action<XDocument>> ProjectChanges { get; } = new List<Action<XDocument>>();
 
         public IEnumerable<string> TargetFrameworkIdentifiers
         {
@@ -153,8 +155,9 @@ namespace Microsoft.NET.TestFramework.ProjectConstruction
 
             foreach (TestPackageReference packageReference in PackageReferences)
             {
+                var includeOrUpdate = packageReference.UpdatePackageReference ? "Update" : "Include";
                 var packageReferenceElement = new XElement(ns + "PackageReference",
-                    new XAttribute("Include", packageReference.ID));
+                    new XAttribute(includeOrUpdate, packageReference.ID));
                 if (packageReference.Version != null)
                 {
                     packageReferenceElement.Add(new XAttribute("Version", packageReference.Version));
@@ -312,6 +315,11 @@ namespace Microsoft.NET.TestFramework.ProjectConstruction
                 }
             }
 
+            foreach (var projectChange in ProjectChanges)
+            {
+                projectChange(projectXml);
+            }
+
             using (var file = File.CreateText(targetProjectPath))
             {
                 projectXml.Save(file);
@@ -382,6 +390,16 @@ namespace {this.Name}
             {
                 File.WriteAllText(Path.Combine(targetFolder, kvp.Key), kvp.Value);
             }
+        }
+
+        public void AddItem(string itemName, string attributeName, string attributeValue)
+        {
+            AddItem(itemName, new Dictionary<string, string>() { { attributeName, attributeValue } } );
+        }
+
+        public void AddItem(string itemName, Dictionary<string, string> attributes)
+        {
+            AdditionalItems.Add(new(itemName, attributes));
         }
 
         public static bool ReferenceAssembliesAreInstalled(TargetDotNetFrameworkVersion targetFrameworkVersion)
