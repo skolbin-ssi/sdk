@@ -4,6 +4,7 @@
       [string] $buildSourcesDirectory,
       [string] $customHelixTargetQueue,
       [string] $officialBuildIdArgs,
+      [string] $additionalMSBuildParameters = "",
       [switch] $test
   )
 
@@ -13,16 +14,15 @@
       return
   }
 
-  $runTestsCannotRunOnHelixArgs = ("-configuration", $configuration, "-ci", $officialBuildIdArgs)
   $runTestsOnHelixArgs = ("-configuration", $configuration,
     "-ci",
   "-restore",
   "-test",
   "-projects", "$buildSourcesDirectory/src/Tests/UnitTests.proj",
   "/bl:$buildSourcesDirectory/artifacts/log/$configuration/TestInHelix.binlog",
-  "/p:_CustomHelixTargetQueue=$customHelixTargetQueue")
+  "/p:_CustomHelixTargetQueue=$customHelixTargetQueue") + $additionalMSBuildParameters.Split(' ')
 
-  $runTests = ("&'$PSScriptRoot/runTestsCannotRunOnHelix.sh' $runTestsCannotRunOnHelixArgs", "&'$PSScriptRoot/common/build.sh' $runTestsOnHelixArgs")
+  $runTests = ("&'$PSScriptRoot/common/build.sh' $runTestsOnHelixArgs")
 
   $runTests | ForEach-Object -Parallel { Invoke-Expression $_}
 
