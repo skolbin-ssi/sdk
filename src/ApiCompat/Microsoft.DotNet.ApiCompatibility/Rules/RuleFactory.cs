@@ -1,6 +1,9 @@
 ﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Collections.Generic;
+using Microsoft.DotNet.ApiCompatibility.Logging;
+
 namespace Microsoft.DotNet.ApiCompatibility.Rules
 {
     /// <summary>
@@ -8,20 +11,46 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
     /// </summary>
     public class RuleFactory : IRuleFactory
     {
-        /// <inheritdoc />
-        public IRule[] CreateRules(RuleSettings settings, IRuleRegistrationContext context)
+        private readonly ISuppressableLog _log;
+        private readonly bool _enableRuleAttributesMustMatch;
+        private readonly bool _enableRuleCannotChangeParameterName;
+
+        public RuleFactory(ISuppressableLog log,
+            bool enableRuleAttributesMustMatch = false,
+            bool enableRuleCannotChangeParameterName = false)
         {
-            return new IRule[]
+            _log = log;
+            _enableRuleAttributesMustMatch = enableRuleAttributesMustMatch;
+            _enableRuleCannotChangeParameterName = enableRuleCannotChangeParameterName;
+        }
+
+        /// <inheritdoc />
+        public IRule[] CreateRules(IRuleSettings settings, IRuleRegistrationContext context)
+        {
+            List<IRule> rules = new()
             {
-                new AssemblyIdentityMustMatch(settings, context),
+                new AssemblyIdentityMustMatch(_log, settings, context),
                 new CannotAddAbstractMember(settings, context),
                 new CannotAddMemberToInterface(settings, context),
                 new CannotAddOrRemoveVirtualKeyword(settings, context),
                 new CannotRemoveBaseTypeOrInterface(settings, context),
                 new CannotSealType(settings, context),
                 new EnumsMustMatch(settings, context),
-                new MembersMustExist(settings, context)
+                new MembersMustExist(settings, context),
+                new CannotChangeVisibility(settings, context)
             };
+
+            if (_enableRuleAttributesMustMatch)
+            {
+                rules.Add(new AttributesMustMatch(settings, context));
+            }
+
+            if (_enableRuleCannotChangeParameterName)
+            {
+                rules.Add(new CannotChangeParameterName(settings, context));
+            }
+
+            return rules.ToArray();
         }
     }
 }

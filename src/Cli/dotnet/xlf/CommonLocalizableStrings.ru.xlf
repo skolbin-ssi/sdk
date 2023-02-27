@@ -32,6 +32,11 @@
         <target state="translated">Разрешает установку пакетов предварительного выпуска.</target>
         <note />
       </trans-unit>
+      <trans-unit id="CorruptSolutionProjectFolderStructure">
+        <source>The solution file '{0}' is missing EndProject tags or has invalid child-parent project folder mappings around project GUID: '{1}'. Manually repair the solution or try to open and save it in Visual Studio."</source>
+        <target state="translated">В файле решения "{0}" отсутствуют теги EndProject или содержатся недопустимые сопоставления дочерних и родительских папок проекта применительно к GUID проекта: "{1}". Исправьте решение вручную или попробуйте открыть и сохранить его в Visual Studio."</target>
+        <note />
+      </trans-unit>
       <trans-unit id="CouldNotFindAnyProjectInDirectory">
         <source>Could not find any project in `{0}`.</source>
         <target state="translated">Не удалось найти проекты в "{0}".</target>
@@ -103,6 +108,11 @@ export PATH="$PATH:{0}"
       <trans-unit id="FrameworkDependentOptionDescription">
         <source>Publish your application as a framework dependent application. A compatible .NET runtime must be installed on the target machine to run your application.</source>
         <target state="translated">Опубликуйте приложение как зависимое от платформы. Для запуска приложения на целевом компьютере должна быть установлена совместимая среда выполнения .NET.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MSBuildAdditionalOptionTitle">
+        <source>.NET Cli Options:</source>
+        <target state="new">.NET Cli Options:</target>
         <note />
       </trans-unit>
       <trans-unit id="MoreThanOneProjectInDirectory">

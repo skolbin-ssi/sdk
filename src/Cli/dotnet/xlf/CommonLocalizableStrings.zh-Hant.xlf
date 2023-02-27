@@ -32,6 +32,11 @@
         <target state="translated">允許安裝發行前版本套件。</target>
         <note />
       </trans-unit>
+      <trans-unit id="CorruptSolutionProjectFolderStructure">
+        <source>The solution file '{0}' is missing EndProject tags or has invalid child-parent project folder mappings around project GUID: '{1}'. Manually repair the solution or try to open and save it in Visual Studio."</source>
+        <target state="translated">方案檔 '{0}' 缺少 EndProject 標記，或圍繞專案 GUID '{1}' 的子父-系專案資料夾對應無效。請手動修復方案，或嘗試在 Visual Studio 中開啟並儲存。」</target>
+        <note />
+      </trans-unit>
       <trans-unit id="CouldNotFindAnyProjectInDirectory">
         <source>Could not find any project in `{0}`.</source>
         <target state="translated">在 `{0}` 中找不到任何專案。</target>
@@ -103,6 +108,11 @@ export PATH="$PATH:{0}"
       <trans-unit id="FrameworkDependentOptionDescription">
         <source>Publish your application as a framework dependent application. A compatible .NET runtime must be installed on the target machine to run your application.</source>
         <target state="translated">將您的應用程式發佈為架構相依的應用程式。必須在目標機器上安裝相容的 .NET 執行階段，才能執行您的應用程式。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MSBuildAdditionalOptionTitle">
+        <source>.NET Cli Options:</source>
+        <target state="new">.NET Cli Options:</target>
         <note />
       </trans-unit>
       <trans-unit id="MoreThanOneProjectInDirectory">

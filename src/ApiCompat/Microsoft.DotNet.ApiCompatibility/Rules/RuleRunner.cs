@@ -4,8 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.CodeAnalysis;
-using Microsoft.DotNet.ApiCompatibility.Abstractions;
+using Microsoft.DotNet.ApiCompatibility.Mapping;
 
 namespace Microsoft.DotNet.ApiCompatibility.Rules
 {
@@ -14,10 +13,8 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
     /// </summary>
     public class RuleRunner : IRuleRunner
     {
-        private readonly IRuleContext _context;
         private readonly IRuleFactory _ruleFactory;
-        private const string DEFAULT_LEFT_NAME = "left";
-        private const string DEFAULT_RIGHT_NAME = "right";
+        private readonly IRuleContext _context;
 
         public RuleRunner(IRuleFactory ruleFactory, IRuleContext context)
         {
@@ -26,28 +23,36 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
         }
 
         /// <inheritdoc />
-        public void InitializeRules(RuleSettings settings)
+        public void InitializeRules(IRuleSettings settings)
         {
             // Instantiate the rules but don't invoke anything on them as they register themselves on "events" inside their constructor.
             _ = _ruleFactory.CreateRules(settings, _context);
         }
 
         /// <inheritdoc />
-        public IReadOnlyList<IEnumerable<CompatDifference>> Run<T>(ElementMapper<T> mapper)
+        public IEnumerable<CompatDifference> Run<T>(IElementMapper<T> mapper)
         {
+            List<CompatDifference> differences = new();
+
             int rightLength = mapper.Right.Length;
-            List<CompatDifference>[] result = new List<CompatDifference>[rightLength];
-            
             for (int rightIndex = 0; rightIndex < rightLength; rightIndex++)
             {
-                List<CompatDifference> differences = new();
-
                 if (mapper is AssemblyMapper am)
                 {
+                    // Ignore assembly mappings which are null on both sides, i.e. when different assembly identities are marked as compatible.
+                    if (am.Left == null && am.Right[rightIndex] == null)
+                        continue;
+
+                    /* Some assembly symbol actions need to know if the passed in assembly is the only one being visited.
+                       This is true if the assembly set only contains a single assembly or if there is no assembly set and
+                       the assembly mapper is directly visited. */
+                    bool containsSingleAssembly = am.ContainingAssemblySet == null || am.ContainingAssemblySet.AssemblyCount < 2;
+
                     _context.RunOnAssemblySymbolActions(am.Left?.Element,
                         am.Right[rightIndex]?.Element,
-                        GetAssemblyName(am.Left, ElementSide.Left),
-                        GetAssemblyName(am.Right[rightIndex], ElementSide.Right),
+                        am.Left?.MetadataInformation ?? MetadataInformation.DefaultLeft,
+                        am.Right[rightIndex]?.MetadataInformation ?? MetadataInformation.DefaultRight,
+                        containsSingleAssembly,
                         differences);
                 }
                 else if (mapper is TypeMapper tm)
@@ -56,8 +61,8 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
                     {
                         _context.RunOnTypeSymbolActions(tm.Left,
                             tm.Right[rightIndex],
-                            GetAssemblyName(tm.ContainingNamespace.ContainingAssembly.Left, ElementSide.Left),
-                            GetAssemblyName(tm.ContainingNamespace.ContainingAssembly.Right[rightIndex], ElementSide.Right),
+                            tm.ContainingNamespace.ContainingAssembly.Left?.MetadataInformation ?? MetadataInformation.DefaultLeft,
+                            tm.ContainingNamespace.ContainingAssembly.Right[rightIndex]?.MetadataInformation ?? MetadataInformation.DefaultRight,
                             differences);
                     }
                 }
@@ -74,8 +79,8 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
                             mm.Right[rightIndex],
                             mm.ContainingType.Left!,
                             mm.ContainingType.Right[rightIndex]!,
-                            GetAssemblyName(mm.ContainingType.ContainingNamespace.ContainingAssembly.Left, ElementSide.Left),
-                            GetAssemblyName(mm.ContainingType.ContainingNamespace.ContainingAssembly.Right[rightIndex], ElementSide.Right),
+                            mm.ContainingType.ContainingNamespace.ContainingAssembly.Left?.MetadataInformation ?? MetadataInformation.DefaultLeft,
+                            mm.ContainingType.ContainingNamespace.ContainingAssembly.Right[rightIndex]?.MetadataInformation ?? MetadataInformation.DefaultRight,
                             differences);
                     }
                 }
@@ -83,23 +88,9 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
                 {
                     throw new ArgumentOutOfRangeException(nameof(mapper));
                 }
-
-                result[rightIndex] = differences;
             }
 
-            return result;
+            return differences;
         }
-
-        private static string GetAssemblyName(ElementContainer<IAssemblySymbol>? assemblyContainer, ElementSide side) =>
-            side switch
-            {
-                ElementSide.Left => string.IsNullOrEmpty(assemblyContainer?.MetadataInformation.DisplayString) ?
-                    DEFAULT_LEFT_NAME :
-                    assemblyContainer!.MetadataInformation.DisplayString,
-                ElementSide.Right => string.IsNullOrEmpty(assemblyContainer?.MetadataInformation.DisplayString) ?
-                    DEFAULT_RIGHT_NAME :
-                    assemblyContainer!.MetadataInformation.DisplayString,
-                _ => throw new ArgumentOutOfRangeException(nameof(side)),
-            };
     }
 }

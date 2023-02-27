@@ -32,6 +32,11 @@
         <target state="translated">プレリリース パッケージのインストールを許可します。</target>
         <note />
       </trans-unit>
+      <trans-unit id="CorruptSolutionProjectFolderStructure">
+        <source>The solution file '{0}' is missing EndProject tags or has invalid child-parent project folder mappings around project GUID: '{1}'. Manually repair the solution or try to open and save it in Visual Studio."</source>
+        <target state="translated">ソリューション ファイル '{0}' に EndProject タグがないか、プロジェクト GUID: '{1}' に関して無効な子 - 親プロジェクト フォルダー マッピングがあります。ソリューションを手動で修正するか、Visual Studio で開いて保存してみてください。"</target>
+        <note />
+      </trans-unit>
       <trans-unit id="CouldNotFindAnyProjectInDirectory">
         <source>Could not find any project in `{0}`.</source>
         <target state="translated">`{0}` にプロジェクトが見つかりませんでした。</target>
@@ -103,6 +108,11 @@ export PATH="$PATH:{0}"
       <trans-unit id="FrameworkDependentOptionDescription">
         <source>Publish your application as a framework dependent application. A compatible .NET runtime must be installed on the target machine to run your application.</source>
         <target state="translated">アプリケーションをフレームワーク依存アプリケーションとして公開します。アプリケーションを実行するには、対象のコンピューターで互換性のある .NET ランタイムをインストールする必要があります。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MSBuildAdditionalOptionTitle">
+        <source>.NET Cli Options:</source>
+        <target state="new">.NET Cli Options:</target>
         <note />
       </trans-unit>
       <trans-unit id="MoreThanOneProjectInDirectory">

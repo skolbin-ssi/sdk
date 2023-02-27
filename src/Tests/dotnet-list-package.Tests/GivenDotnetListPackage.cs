@@ -60,7 +60,7 @@ namespace Microsoft.DotNet.Cli.List.Package.Tests
             var projectDirectory = testAsset.Path;
 
             var packageName = "Newtonsoft.Json";
-            var packageVersion = "9.0.1";
+            var packageVersion = "13.0.1";
             var cmd = new DotnetCommand(Log)
                 .WithWorkingDirectory(projectDirectory)
                 .Execute("add", "package", packageName, "--version", packageVersion);
@@ -106,7 +106,7 @@ namespace Microsoft.DotNet.Cli.List.Package.Tests
                 .And.HaveStdOutContainingIgnoreSpaces("Microsoft.NETCore.App(A)")
                 .And.HaveStdOutContainingIgnoreSpaces("(A):Auto-referencedpackage");
 
-            void ChangeTargetFrameworkTo2_1(XDocument project)
+            static void ChangeTargetFrameworkTo2_1(XDocument project)
             {
                 project.Descendants()
                        .Single(e => e.Name.LocalName == "TargetFramework")
@@ -151,7 +151,7 @@ namespace Microsoft.DotNet.Cli.List.Package.Tests
                 .WithWorkingDirectory(projectDirectory)
                 .Execute()
                 .Should()
-                .Pass()
+                .Fail()
                 .And.HaveStdErr();
         }
 
@@ -314,8 +314,10 @@ class Program
         [InlineData(false, "--outdated", "--highest-minor")]
         [InlineData(false, "--outdated", "--highest-patch")]
         [InlineData(false, "--config")]
+        [InlineData(false, "--configfile")]
         [InlineData(false, "--source")]
         [InlineData(false, "--config", "--deprecated")]
+        [InlineData(false, "--configfile", "--deprecated")]
         [InlineData(false, "--source", "--vulnerable")]
         [InlineData(true, "--vulnerable", "--deprecated")]
         [InlineData(true, "--vulnerable", "--outdated")]

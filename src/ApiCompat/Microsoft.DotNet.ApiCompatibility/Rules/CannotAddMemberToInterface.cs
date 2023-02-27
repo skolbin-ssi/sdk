@@ -3,13 +3,12 @@
 
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
-using Microsoft.DotNet.ApiCompatibility.Abstractions;
 
 namespace Microsoft.DotNet.ApiCompatibility.Rules
 {
     public class CannotAddMemberToInterface : IRule
     {
-        public CannotAddMemberToInterface(RuleSettings settings, IRuleRegistrationContext context)
+        public CannotAddMemberToInterface(IRuleSettings settings, IRuleRegistrationContext context)
         {
             // StrictMode scenario are handled by the MembersMustExist rule.
             if (!settings.StrictMode)
@@ -18,7 +17,7 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
             }
         }
 
-        private void RunOnMemberSymbol(ISymbol? left, ISymbol? right, string leftName, string rightName, IList<CompatDifference> differences)
+        private void RunOnMemberSymbol(ISymbol? left, ISymbol? right, MetadataInformation leftMetadata, MetadataInformation rightMetadata, IList<CompatDifference> differences)
         {
             if (left == null && right != null && right.ContainingType.TypeKind == TypeKind.Interface)
             {
@@ -35,8 +34,10 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
                 if (right.ContainingType.FindImplementationForInterfaceMember(right) == null)
                 {
                     differences.Add(new CompatDifference(
+                        leftMetadata,
+                        rightMetadata,
                         DiagnosticIds.CannotAddMemberToInterface,
-                        string.Format(Resources.CannotAddMemberToInterface, right.ToDisplayString(), rightName, leftName),
+                        string.Format(Resources.CannotAddMemberToInterface, right.ToDisplayString(), rightMetadata, leftMetadata),
                         DifferenceType.Added,
                         right));
                 }

@@ -62,8 +62,7 @@ namespace Microsoft.DotNet.Cli
             WorkloadCommandParser.GetCommand()
         };
 
-        // Options
-        public static readonly Option<bool> DiagOption = new Option<bool>(new[] { "-d", "--diagnostics" });
+        public static readonly Option<bool> DiagOption = CommonOptionsFactory.CreateDiagnosticsOption();
 
         public static readonly Option<bool> VersionOption = new Option<bool>("--version");
 
@@ -209,13 +208,13 @@ namespace Microsoft.DotNet.Cli
 
             if (exception is Utils.GracefulException)
             {
-                Reporter.Error.WriteLine(CommandContext.IsVerbose()
+                Reporter.Error.WriteLine(CommandLoggingContext.IsVerbose
                     ? exception.ToString().Red().Bold()
                     : exception.Message.Red().Bold());
             }
             else if (exception is CommandParsingException)
             {
-                Reporter.Error.WriteLine(CommandContext.IsVerbose()
+                Reporter.Error.WriteLine(CommandLoggingContext.IsVerbose
                     ? exception.ToString().Red().Bold()
                     : exception.Message.Red().Bold());
                 context.ParseResult.ShowHelp();
@@ -282,6 +281,28 @@ namespace Microsoft.DotNet.Cli
                 }
             }
 
+            public void additionalOption(HelpContext context)
+            {
+                List<TwoColumnHelpRow> options = new();
+                HashSet<Option> uniqueOptions = new();
+                foreach (Option option in context.Command.Options)
+                {
+                    if (!option.IsHidden && uniqueOptions.Add(option))
+                    {
+                        options.Add(context.HelpBuilder.GetTwoColumnRow(option, context));
+                    }
+                }
+
+                if (options.Count <= 0)
+                {
+                    return;
+                }
+
+                context.Output.WriteLine(CommonLocalizableStrings.MSBuildAdditionalOptionTitle);
+                context.HelpBuilder.WriteColumns(options, context);
+                context.Output.WriteLine();
+            }
+
             public override void Write(HelpContext context)
             {
                 var command = context.Command;
@@ -292,11 +313,13 @@ namespace Microsoft.DotNet.Cli
                 }
                 else if (command.Name.Equals(NuGetCommandParser.GetCommand().Name))
                 {
-                    NuGetCommand.Run(helpArgs);
+                    NuGetCommand.Run(context.ParseResult);
                 }
                 else if (command.Name.Equals(MSBuildCommandParser.GetCommand().Name))
                 {
                     new MSBuildForwardingApp(helpArgs).Execute();
+                    context.Output.WriteLine();
+                    additionalOption(context);
                 }
                 else if (command.Name.Equals(VSTestCommandParser.GetCommand().Name))
                 {
@@ -304,7 +327,7 @@ namespace Microsoft.DotNet.Cli
                 }
                 else if (command.Name.Equals(FormatCommandParser.GetCommand().Name))
                 {
-                    var argumetns = context.ParseResult.GetValueForArgument(FormatCommandParser.Arguments);
+                    var argumetns = context.ParseResult.GetValue(FormatCommandParser.Arguments);
                     new DotnetFormatForwardingApp(argumetns.Concat(helpArgs).ToArray()).Execute();
                 }
                 else if (command.Name.Equals(FsiCommandParser.GetCommand().Name))
@@ -343,6 +366,9 @@ namespace Microsoft.DotNet.Cli
                     base.Write(context);
                 }
             }
+
+
+
         }
     }
 }

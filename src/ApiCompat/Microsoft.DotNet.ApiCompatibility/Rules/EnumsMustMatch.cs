@@ -4,7 +4,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
-using Microsoft.DotNet.ApiCompatibility.Abstractions;
 
 namespace Microsoft.DotNet.ApiCompatibility.Rules
 {
@@ -13,15 +12,15 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
     /// </summary>
     public class EnumsMustMatch : IRule
     {
-        private readonly RuleSettings _settings;
+        private readonly IRuleSettings _settings;
 
-        public EnumsMustMatch(RuleSettings settings, IRuleRegistrationContext context)
+        public EnumsMustMatch(IRuleSettings settings, IRuleRegistrationContext context)
         {
             _settings = settings;
             context.RegisterOnTypeSymbolAction(RunOnTypeSymbol);
         }
 
-        private void RunOnTypeSymbol(ITypeSymbol? left, ITypeSymbol? right, string leftName, string rightName, IList<CompatDifference> differences)
+        private void RunOnTypeSymbol(ITypeSymbol? left, ITypeSymbol? right, MetadataInformation leftMetadata, MetadataInformation rightMetadata, IList<CompatDifference> differences)
         {
             // Ensure that this rule only runs on enums.
             if (!IsEnum(left) || !IsEnum(right))
@@ -42,9 +41,11 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
             }
 
             // Check that the underlying types are equal and if not, emit a diagnostic.
-            if (!_settings.SymbolComparer.Equals(leftType, rightType))
+            if (!_settings.SymbolEqualityComparer.Equals(leftType, rightType))
             {
                 differences.Add(new CompatDifference(
+                    leftMetadata,
+                    rightMetadata,
                     DiagnosticIds.EnumTypesMustMatch,
                     string.Format(Resources.EnumTypesMustMatch, left.Name, leftType, rightType),
                     DifferenceType.Changed,
@@ -75,6 +76,8 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
                 if (lEntry.Value.ConstantValue is not object lval || rField.ConstantValue is not object rval || !lval.Equals(rval))
                 {
                     differences.Add(new CompatDifference(
+                        leftMetadata,
+                        rightMetadata,
                         DiagnosticIds.EnumValuesMustMatch,
                         string.Format(Resources.EnumValuesMustMatch, left.Name, lEntry.Key, lEntry.Value.ConstantValue, rField.ConstantValue),
                         DifferenceType.Changed,

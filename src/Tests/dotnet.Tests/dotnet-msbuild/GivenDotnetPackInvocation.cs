@@ -17,7 +17,7 @@ namespace Microsoft.DotNet.Cli.MSBuild.Tests
     {
         const string ExpectedPrefix = "-maxcpucount -verbosity:m -restore -target:pack";
         const string ExpectedNoBuildPrefix = "-maxcpucount -verbosity:m -target:pack";
-        const string ExpectedProperties = "-property:_IsPacking=true";
+        const string ExpectedProperties = "--property:_IsPacking=true";
 
         private static readonly string WorkingDirectory =
             TestPathUtilities.FormatAbsolutePath(nameof(GivenDotnetPackInvocation));
@@ -29,14 +29,16 @@ namespace Microsoft.DotNet.Cli.MSBuild.Tests
         [InlineData(new string[] { "--no-build" }, "-property:NoBuild=true")]
         [InlineData(new string[] { "--include-symbols" }, "-property:IncludeSymbols=true")]
         [InlineData(new string[] { "--include-source" }, "-property:IncludeSource=true")]
-        [InlineData(new string[] { "-c", "<config>" }, "-property:Configuration=<config>")]
-        [InlineData(new string[] { "--configuration", "<config>" }, "-property:Configuration=<config>")]
+        [InlineData(new string[] { "-c", "<config>" }, "-property:Configuration=<config> -property:DOTNET_CLI_DISABLE_PUBLISH_AND_PACK_RELEASE=true")]
+        [InlineData(new string[] { "--configuration", "<config>" }, "-property:Configuration=<config> -property:DOTNET_CLI_DISABLE_PUBLISH_AND_PACK_RELEASE=true")]
         [InlineData(new string[] { "--version-suffix", "<versionsuffix>" }, "-property:VersionSuffix=<versionsuffix>")]
         [InlineData(new string[] { "-s" }, "-property:Serviceable=true")]
         [InlineData(new string[] { "--serviceable" }, "-property:Serviceable=true")]
         [InlineData(new string[] { "-v", "diag" }, "-verbosity:diag")]
         [InlineData(new string[] { "--verbosity", "diag" }, "-verbosity:diag")]
         [InlineData(new string[] { "<project>" }, "<project>")]
+        [InlineData(new string[] { "--disable-build-servers" }, "-p:UseRazorBuildServer=false -p:UseSharedCompilation=false /nodeReuse:false")]
+
         public void MsbuildInvocationIsCorrect(string[] args, string expectedAdditionalArgs)
         {
             CommandDirectoryContext.PerformActionWithBasePath(WorkingDirectory, () =>

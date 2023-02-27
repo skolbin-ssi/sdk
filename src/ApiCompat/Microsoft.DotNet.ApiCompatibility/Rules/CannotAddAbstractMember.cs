@@ -3,8 +3,7 @@
 
 using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
-using Microsoft.DotNet.ApiCompatibility.Abstractions;
-using Microsoft.DotNet.ApiCompatibility.Extensions;
+using Microsoft.DotNet.ApiSymbolExtensions;
 
 namespace Microsoft.DotNet.ApiCompatibility.Rules
 {
@@ -13,9 +12,9 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
     /// </summary>
     public class CannotAddAbstractMember : IRule
     {
-        private readonly RuleSettings _settings;
+        private readonly IRuleSettings _settings;
 
-        public CannotAddAbstractMember(RuleSettings settings, IRuleRegistrationContext context)
+        public CannotAddAbstractMember(IRuleSettings settings, IRuleRegistrationContext context)
         {
             _settings = settings;
             // This rule should only run when not in strict mode. 
@@ -26,7 +25,7 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
             }
         }
 
-        private void RunOnMemberMapperAction(ISymbol? left, ISymbol? right, ITypeSymbol leftContainingType, ITypeSymbol rightContainingType, string leftName, string rightName, IList<CompatDifference> differences)
+        private void RunOnMemberMapperAction(ISymbol? left, ISymbol? right, ITypeSymbol leftContainingType, ITypeSymbol rightContainingType, MetadataInformation leftMetadata, MetadataInformation rightMetadata, IList<CompatDifference> differences)
         {
             if (left == null && right != null && right.IsAbstract)
             {
@@ -36,8 +35,10 @@ namespace Microsoft.DotNet.ApiCompatibility.Rules
                 if (leftContainingType.TypeKind != TypeKind.Interface && !leftContainingType.IsEffectivelySealed(_settings.IncludeInternalSymbols))
                 {
                     differences.Add(new CompatDifference(
+                        leftMetadata,
+                        rightMetadata,
                         DiagnosticIds.CannotAddAbstractMember,
-                        string.Format(Resources.CannotAddAbstractMember, right.ToDisplayString(), rightName, leftName),
+                        string.Format(Resources.CannotAddAbstractMember, right.ToDisplayString(), rightMetadata, leftMetadata),
                         DifferenceType.Added,
                         right));
                 }
