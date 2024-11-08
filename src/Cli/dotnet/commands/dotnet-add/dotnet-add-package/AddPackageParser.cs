@@ -1,119 +1,134 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Completions;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading;
 using Microsoft.DotNet.Tools;
 using Microsoft.DotNet.Tools.Add.PackageReference;
+using Microsoft.Extensions.EnvironmentAbstractions;
+using NuGet.Versioning;
 using LocalizableStrings = Microsoft.DotNet.Tools.Add.PackageReference.LocalizableStrings;
 
 namespace Microsoft.DotNet.Cli
 {
     internal static class AddPackageParser
     {
-        public static readonly Argument<string> CmdPackageArgument = new Argument<string>(LocalizableStrings.CmdPackage)
+        public static readonly CliArgument<string> CmdPackageArgument = new CliArgument<string>(LocalizableStrings.CmdPackage)
         {
             Description = LocalizableStrings.CmdPackageDescription
-        }.AddCompletions((context) => QueryNuGet(context.WordToComplete).Select(match => new CompletionItem(match)));
-
-        public static readonly Option<string> VersionOption = new ForwardedOption<string>(new string[] { "-v", "--version" }, LocalizableStrings.CmdVersionDescription)
+        }.AddCompletions((context) =>
         {
-            ArgumentHelpName = LocalizableStrings.CmdVersion
-        }.ForwardAsSingle(o => $"--version {o}");
+            // we should take --prerelease flags into account for version completion
+            var allowPrerelease = context.ParseResult.GetValue(PrereleaseOption);
+            return QueryNuGet(context.WordToComplete, allowPrerelease, CancellationToken.None).Result.Select(packageId => new CompletionItem(packageId));
+        });
 
-        public static readonly Option<string> FrameworkOption = new ForwardedOption<string>(new string[] { "-f", "--framework" }, LocalizableStrings.CmdFrameworkDescription)
+        public static readonly CliOption<string> VersionOption = new ForwardedOption<string>("--version", "-v")
         {
-            ArgumentHelpName = LocalizableStrings.CmdFramework
+            Description = LocalizableStrings.CmdVersionDescription,
+            HelpName = LocalizableStrings.CmdVersion
+        }.ForwardAsSingle(o => $"--version {o}")
+            .AddCompletions((context) =>
+            {
+                // we can only do version completion if we have a package id
+                if (context.ParseResult.GetValue(CmdPackageArgument) is string packageId)
+                {
+                    // we should take --prerelease flags into account for version completion
+                    var allowPrerelease = context.ParseResult.GetValue(PrereleaseOption);
+                    return QueryVersionsForPackage(packageId, context.WordToComplete, allowPrerelease, CancellationToken.None)
+                        .Result
+                        .Select(version => new CompletionItem(version.ToNormalizedString().ToLowerInvariant()));
+                }
+                else
+                {
+                    return Enumerable.Empty<CompletionItem>();
+                }
+            });
+
+        public static readonly CliOption<string> FrameworkOption = new ForwardedOption<string>("--framework", "-f")
+        {
+            Description = LocalizableStrings.CmdFrameworkDescription,
+            HelpName = LocalizableStrings.CmdFramework
         }.ForwardAsSingle(o => $"--framework {o}");
 
-        public static readonly Option<bool> NoRestoreOption = new Option<bool>(new string[] { "-n", "--no-restore" }, LocalizableStrings.CmdNoRestoreDescription);
-
-        public static readonly Option<string> SourceOption = new ForwardedOption<string>(new string[] { "-s", "--source" }, LocalizableStrings.CmdSourceDescription)
+        public static readonly CliOption<bool> NoRestoreOption = new("--no-restore", "-n")
         {
-            ArgumentHelpName = LocalizableStrings.CmdSource
+            Description = LocalizableStrings.CmdNoRestoreDescription
+        };
+
+        public static readonly CliOption<string> SourceOption = new ForwardedOption<string>("--source", "-s")
+        {
+            Description = LocalizableStrings.CmdSourceDescription,
+            HelpName = LocalizableStrings.CmdSource
         }.ForwardAsSingle(o => $"--source {o}");
 
-        public static readonly Option<string> PackageDirOption = new ForwardedOption<string>("--package-directory", LocalizableStrings.CmdPackageDirectoryDescription)
+        public static readonly CliOption<string> PackageDirOption = new ForwardedOption<string>("--package-directory")
         {
-            ArgumentHelpName = LocalizableStrings.CmdPackageDirectory
+            Description = LocalizableStrings.CmdPackageDirectoryDescription,
+            HelpName = LocalizableStrings.CmdPackageDirectory
         }.ForwardAsSingle(o => $"--package-directory {o}");
 
-        public static readonly Option<bool> InteractiveOption = new ForwardedOption<bool>("--interactive", CommonLocalizableStrings.CommandInteractiveOptionDescription)
-            .ForwardAs("--interactive");
+        public static readonly CliOption<bool> InteractiveOption = new ForwardedOption<bool>("--interactive")
+        {
+            Description = CommonLocalizableStrings.CommandInteractiveOptionDescription,
+        }.ForwardAs("--interactive");
 
-        public static readonly Option<bool> PrereleaseOption = new ForwardedOption<bool>("--prerelease", CommonLocalizableStrings.CommandPrereleaseOptionDescription)
-            .ForwardAs("--prerelease");
+        public static readonly CliOption<bool> PrereleaseOption = new ForwardedOption<bool>("--prerelease")
+        {
+            Description = CommonLocalizableStrings.CommandPrereleaseOptionDescription
+        }.ForwardAs("--prerelease");
 
-        private static readonly Command Command = ConstructCommand();
+        private static readonly CliCommand Command = ConstructCommand();
 
-        public static Command GetCommand()
+        public static CliCommand GetCommand()
         {
             return Command;
         }
 
-        private static Command ConstructCommand()
+        private static CliCommand ConstructCommand()
         {
-            var command = new Command("package", LocalizableStrings.AppFullName);
+            CliCommand command = new("package", LocalizableStrings.AppFullName);
 
-            command.AddArgument(CmdPackageArgument);
-            command.AddOption(VersionOption);
-            command.AddOption(FrameworkOption);
-            command.AddOption(NoRestoreOption);
-            command.AddOption(SourceOption);
-            command.AddOption(PackageDirOption);
-            command.AddOption(InteractiveOption);
-            command.AddOption(PrereleaseOption);
+            command.Arguments.Add(CmdPackageArgument);
+            command.Options.Add(VersionOption);
+            command.Options.Add(FrameworkOption);
+            command.Options.Add(NoRestoreOption);
+            command.Options.Add(SourceOption);
+            command.Options.Add(PackageDirOption);
+            command.Options.Add(InteractiveOption);
+            command.Options.Add(PrereleaseOption);
 
-            command.SetHandler((parseResult) => new AddPackageReferenceCommand(parseResult).Execute());
+            command.SetAction((parseResult) => new AddPackageReferenceCommand(parseResult).Execute());
 
             return command;
         }
 
-        public static IEnumerable<string> QueryNuGet(string match)
+        public static async Task<IEnumerable<string>> QueryNuGet(string packageStem, bool allowPrerelease, CancellationToken cancellationToken)
         {
-            var httpClient = new HttpClient();
-
-            Stream result;
-
             try
             {
-                using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                var response = httpClient.GetAsync($"https://api-v2v3search-0.nuget.org/autocomplete?q={match}&skip=0&take=100", cancellation.Token)
-                                         .Result;
-
-                result = response.Content.ReadAsStreamAsync().Result;
+                var downloader = new NuGetPackageDownloader.NuGetPackageDownloader(packageInstallDir: new DirectoryPath());
+                var versions = await downloader.GetPackageIdsAsync(packageStem, allowPrerelease, cancellationToken: cancellationToken);
+                return versions;
             }
             catch (Exception)
             {
-                yield break;
-            }
-
-            foreach (var packageId in EnumerablePackageIdFromQueryResponse(result))
-            {
-                yield return packageId;
+                return Enumerable.Empty<string>();
             }
         }
 
-        internal static IEnumerable<string> EnumerablePackageIdFromQueryResponse(Stream result)
+        internal static async Task<IEnumerable<NuGetVersion>> QueryVersionsForPackage(string packageId, string versionFragment, bool allowPrerelease, CancellationToken cancellationToken)
         {
-            using (JsonDocument doc = JsonDocument.Parse(result))
+            try
             {
-                JsonElement root = doc.RootElement;
-
-                if (root.TryGetProperty("data", out var data))
-                {
-                    foreach (JsonElement packageIdElement in data.EnumerateArray())
-                    {
-                        yield return packageIdElement.GetString();
-                    }
-                }
+                var downloader = new NuGetPackageDownloader.NuGetPackageDownloader(packageInstallDir: new DirectoryPath());
+                var versions = await downloader.GetPackageVersionsAsync(new(packageId), versionFragment, allowPrerelease, cancellationToken: cancellationToken);
+                return versions;
+            }
+            catch (Exception)
+            {
+                return Enumerable.Empty<NuGetVersion>();
             }
         }
     }

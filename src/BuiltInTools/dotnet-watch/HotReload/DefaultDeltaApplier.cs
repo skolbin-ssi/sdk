@@ -1,151 +1,188 @@
-﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-#nullable enable
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
+using System.Diagnostics;
 using System.IO.Pipes;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.ExternalAccess.Watch.Api;
 using Microsoft.Extensions.HotReload;
 using Microsoft.Extensions.Tools.Internal;
 
 namespace Microsoft.DotNet.Watcher.Tools
 {
-    internal class DefaultDeltaApplier : IDeltaApplier
+    internal sealed class DefaultDeltaApplier(IReporter reporter) : SingleProcessDeltaApplier(reporter)
     {
-        private static readonly string _namedPipeName = Guid.NewGuid().ToString();
-        private readonly IReporter _reporter;
         private Task<ImmutableArray<string>>? _capabilitiesTask;
         private NamedPipeServerStream? _pipe;
+        private bool _changeApplicationErrorFailed;
 
-        public DefaultDeltaApplier(IReporter reporter)
+        public override void CreateConnection(string namedPipeName, CancellationToken cancellationToken)
         {
-            _reporter = reporter;
-        }
+            _pipe = new NamedPipeServerStream(namedPipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
-        internal bool SuppressNamedPipeForTests { get; set; }
+            // It is important to establish the connection (WaitForConnectionAsync) before we return,
+            // otherwise the client wouldn't be able to connect.
+            // However, we don't want to wait for the task to complete, so that we can start the client process.
+            _capabilitiesTask = ConnectAsync();
 
-        public ValueTask InitializeAsync(DotNetWatchContext context, CancellationToken cancellationToken)
-        {
-            if (!SuppressNamedPipeForTests)
+            async Task<ImmutableArray<string>> ConnectAsync()
             {
-                _pipe = new NamedPipeServerStream(_namedPipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
-                _capabilitiesTask = Task.Run(async () =>
+                try
                 {
-                    _reporter.Verbose($"Connecting to the application.");
+                    Reporter.Verbose($"Waiting for application to connect to pipe {namedPipeName}.");
 
                     await _pipe.WaitForConnectionAsync(cancellationToken);
 
                     // When the client connects, the first payload it sends is the initialization payload which includes the apply capabilities.
 
                     var capabilities = ClientInitializationPayload.Read(_pipe).Capabilities;
+                    Reporter.Verbose($"Capabilities: '{capabilities}'");
                     return capabilities.Split(' ').ToImmutableArray();
-                });
-            }
-
-            if (context.Iteration == 0)
-            {
-                var deltaApplier = Path.Combine(AppContext.BaseDirectory, "hotreload", "Microsoft.Extensions.DotNetDeltaApplier.dll");
-                context.ProcessSpec.EnvironmentVariables.DotNetStartupHooks.Add(deltaApplier);
-
-                // Configure the app for EnC
-                context.ProcessSpec.EnvironmentVariables["DOTNET_MODIFIABLE_ASSEMBLIES"] = "debug";
-                context.ProcessSpec.EnvironmentVariables["DOTNET_HOTRELOAD_NAMEDPIPE_NAME"] = _namedPipeName;
-            }
-            return default;
-        }
-
-        public Task<ImmutableArray<string>> GetApplyUpdateCapabilitiesAsync(DotNetWatchContext context, CancellationToken cancellationToken)
-            => _capabilitiesTask ?? Task.FromResult(ImmutableArray<string>.Empty);
-
-        public async ValueTask<bool> Apply(DotNetWatchContext context, ImmutableArray<WatchHotReloadService.Update> solutionUpdate, CancellationToken cancellationToken)
-        {
-            if (_capabilitiesTask is null || !_capabilitiesTask.IsCompletedSuccessfully || _pipe is null || !_pipe.IsConnected)
-            {
-                // The client isn't listening
-                _reporter.Verbose("No client connected to receive delta updates.");
-                return false;
-            }
-
-            var payload = new UpdatePayload(ImmutableArray.CreateRange(solutionUpdate, c => new UpdateDelta(
-                c.ModuleId,
-                metadataDelta: c.MetadataDelta.ToArray(),
-                ilDelta: c.ILDelta.ToArray(),
-                c.UpdatedTypes.ToArray())));
-
-            await payload.WriteAsync(_pipe, cancellationToken);
-            await _pipe.FlushAsync(cancellationToken);
-
-            var result = ApplyResult.Failed;
-            var bytes = ArrayPool<byte>.Shared.Rent(1);
-            try
-            {
-                var numBytes = await _pipe.ReadAsync(bytes, cancellationToken);
-
-                if (numBytes == 1)
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
                 {
-                    result = (ApplyResult)bytes[0];
+                    // pipe might throw another exception when forcibly closed on process termination:
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        Reporter.Error($"Failed to read capabilities: {e.Message}");
+                    }
+
+                    return [];
                 }
             }
-            catch (Exception ex)
+        }
+
+        public override Task WaitForProcessRunningAsync(CancellationToken cancellationToken)
+            // Should only be called after CreateConnection
+            => _capabilitiesTask ?? throw new InvalidOperationException();
+
+        public override Task<ImmutableArray<string>> GetApplyUpdateCapabilitiesAsync(CancellationToken cancellationToken)
+            // Should only be called after CreateConnection
+            => _capabilitiesTask ?? throw new InvalidOperationException();
+
+        public override async Task<ApplyStatus> Apply(ImmutableArray<WatchHotReloadService.Update> updates, CancellationToken cancellationToken)
+        {
+            // Should only be called after CreateConnection
+            Debug.Assert(_capabilitiesTask != null);
+
+            // Should not be disposed:
+            Debug.Assert(_pipe != null);
+
+            if (_changeApplicationErrorFailed)
             {
-                // Log it, but we'll treat this as a failed apply.
-                _reporter.Verbose(ex.Message);
+                Reporter.Verbose("Previous changes failed to apply. Further changes are not applied to this process.", "🔥");
+                return ApplyStatus.Failed;
+            }
+
+            var applicableUpdates = await FilterApplicableUpdatesAsync(updates, cancellationToken);
+            if (applicableUpdates.Count == 0)
+            {
+                Reporter.Verbose("No updates applicable to this process", "🔥");
+                return ApplyStatus.NoChangesApplied;
+            }
+
+            var payload = new UpdatePayload(
+                deltas: applicableUpdates.Select(update => new UpdateDelta(
+                    update.ModuleId,
+                    metadataDelta: update.MetadataDelta.ToArray(),
+                    ilDelta: update.ILDelta.ToArray(),
+                    update.UpdatedTypes.ToArray())).ToArray(),
+                responseLoggingLevel: Reporter.IsVerbose ? ResponseLoggingLevel.Verbose : ResponseLoggingLevel.WarningsAndErrors);
+
+            var success = false;
+            var canceled = false;
+            try
+            {
+                await payload.WriteAsync(_pipe, cancellationToken);
+                await _pipe.FlushAsync(cancellationToken);
+                success = await ReceiveApplyUpdateResult(cancellationToken);
+            }
+            catch (OperationCanceledException) when (!(canceled = true))
+            {
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                Reporter.Error($"Change failed to apply (error: '{e.Message}'). Further changes won't be applied to this process.");
+                Reporter.Verbose($"Exception stack trace: {e.StackTrace}", "❌");
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(bytes);
-            }
-
-            if (result == ApplyResult.Failed)
-            {
-                return false;
-            }
-
-            if (context.BrowserRefreshServer is not null)
-            {
-                // BrowserRefreshServer will be null in non web projects or if we failed to establish a websocket connection
-                await context.BrowserRefreshServer.SendJsonSerlialized(new AspNetCoreHotReloadApplied(), cancellationToken);
-            }
-
-            return true;
-        }
-
-        public async ValueTask ReportDiagnosticsAsync(DotNetWatchContext context, IEnumerable<string> diagnostics, CancellationToken cancellationToken)
-        {
-            if (context.BrowserRefreshServer != null)
-            {
-                var message = new HotReloadDiagnostics
+                if (!success)
                 {
-                    Diagnostics = diagnostics
-                };
+                    if (canceled)
+                    {
+                        Reporter.Verbose("Change application cancelled. Further changes won't be applied to this process.", "🔥");
+                    }
 
-                await context.BrowserRefreshServer.SendJsonSerlialized(message, cancellationToken);
+                    _changeApplicationErrorFailed = true;
+
+                    DisposePipe();
+                }
+            }
+
+            Reporter.Report(MessageDescriptor.UpdatesApplied, applicableUpdates.Count, updates.Length);
+
+            return
+                !success ? ApplyStatus.Failed :
+                (applicableUpdates.Count < updates.Length) ? ApplyStatus.SomeChangesApplied : ApplyStatus.AllChangesApplied;
+        }
+
+        private async Task<bool> ReceiveApplyUpdateResult(CancellationToken cancellationToken)
+        {
+            Debug.Assert(_pipe != null);
+
+            var status = ArrayPool<byte>.Shared.Rent(1);
+            try
+            {
+                var statusBytesRead = await _pipe.ReadAsync(status, cancellationToken);
+                if (statusBytesRead != 1 || status[0] != UpdatePayload.ApplySuccessValue)
+                {
+                    Reporter.Error($"Change failed to apply (error code: '{BitConverter.ToString(status, 0, statusBytesRead)}'). Further changes won't be applied to this process.");
+                    return false;
+                }
+
+                foreach (var (message, severity) in UpdatePayload.ReadLog(_pipe))
+                {
+                    switch (severity)
+                    {
+                        case AgentMessageSeverity.Verbose:
+                            Reporter.Verbose(message, emoji: "🕵️");
+                            break;
+
+                        case AgentMessageSeverity.Error:
+                            Reporter.Error(message);
+                            break;
+
+                        case AgentMessageSeverity.Warning:
+                            Reporter.Warn(message, emoji: "⚠");
+                            break;
+
+                        default:
+                            Reporter.Error($"Unexpected message severity: {severity}");
+                            return false;
+                    }
+                }
+
+                return true;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(status);
             }
         }
 
-        public void Dispose()
+        private void DisposePipe()
         {
+            Reporter.Verbose("Disposing pipe");
             _pipe?.Dispose();
+            _pipe = null;
         }
 
-        private readonly struct HotReloadDiagnostics
+        public override void Dispose()
         {
-            public string Type => "HotReloadDiagnosticsv1";
-
-            public IEnumerable<string> Diagnostics { get; init; }
-        }
-
-        private readonly struct AspNetCoreHotReloadApplied
-        {
-            public string Type => "AspNetCoreHotReloadApplied";
+            DisposePipe();
         }
     }
 }

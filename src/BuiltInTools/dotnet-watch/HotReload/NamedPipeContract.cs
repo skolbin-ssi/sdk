@@ -1,26 +1,29 @@
-﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 namespace Microsoft.Extensions.HotReload
 {
-    internal readonly struct UpdatePayload
+    internal enum ResponseLoggingLevel : byte
     {
-        private static readonly byte Version = 1;
+        WarningsAndErrors = 0,
+        Verbose = 1, 
+    }
 
-        public IReadOnlyList<UpdateDelta> Deltas { get; }
+    internal enum AgentMessageSeverity : byte
+    {
+        Verbose = 0,
+        Warning = 1,
+        Error = 2,
+    }
 
-        public UpdatePayload(IReadOnlyList<UpdateDelta> deltas)
-        {
-            Deltas = deltas;
-        }
+    internal readonly struct UpdatePayload(IReadOnlyList<UpdateDelta> deltas, ResponseLoggingLevel responseLoggingLevel)
+    {
+        public const byte ApplySuccessValue = 0;
+
+        private const byte Version = 2;
+
+        public IReadOnlyList<UpdateDelta> Deltas { get; } = deltas;
+        public ResponseLoggingLevel ResponseLoggingLevel { get; } = responseLoggingLevel;
 
         /// <summary>
         /// Called by the dotnet-watch.
@@ -39,6 +42,8 @@ namespace Microsoft.Extensions.HotReload
                 await WriteBytesAsync(binaryWriter, delta.ILDelta, cancellationToken);
                 WriteIntArray(binaryWriter, delta.UpdatedTypes);
             }
+
+            binaryWriter.Write((byte)ResponseLoggingLevel);
 
             static ValueTask WriteBytesAsync(BinaryWriter binaryWriter, byte[] bytes, CancellationToken cancellationToken)
             {
@@ -60,6 +65,22 @@ namespace Microsoft.Extensions.HotReload
                 {
                     binaryWriter.Write(value);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Called by the dotnet-watch.
+        /// </summary>
+        public static void WriteLog(Stream stream, IReadOnlyCollection<(string message, AgentMessageSeverity severity)> log)
+        {
+            using var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true);
+
+            writer.Write(log.Count);
+
+            foreach (var (message, severity) in log)
+            {
+                writer.Write(message);
+                writer.Write((byte)severity);
             }
         }
 
@@ -88,7 +109,9 @@ namespace Microsoft.Extensions.HotReload
                 deltas[i] = new UpdateDelta(moduleId, metadataDelta: metadataDelta, ilDelta: ilDelta, updatedTypes);
             }
 
-            return new UpdatePayload(deltas);
+            var responseLoggingLevel = (ResponseLoggingLevel)binaryReader.ReadByte();
+
+            return new UpdatePayload(deltas, responseLoggingLevel: responseLoggingLevel);
 
             static async ValueTask<byte[]> ReadBytesAsync(BinaryReader binaryReader, CancellationToken cancellationToken)
             {
@@ -123,6 +146,21 @@ namespace Microsoft.Extensions.HotReload
                 return values;
             }
         }
+
+        /// <summary>
+        /// Called by delta applier.
+        /// </summary>
+        public static IEnumerable<(string message, AgentMessageSeverity severity)> ReadLog(Stream stream)
+        {
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
+
+            var entryCount = reader.ReadInt32();
+
+            for (var i = 0; i < entryCount; i++)
+            {
+                yield return (reader.ReadString(), (AgentMessageSeverity)reader.ReadByte());
+            }
+        }
     }
 
     internal readonly struct UpdateDelta
@@ -139,12 +177,6 @@ namespace Microsoft.Extensions.HotReload
             ILDelta = ilDelta;
             UpdatedTypes = updatedTypes;
         }
-    }
-
-    internal enum ApplyResult
-    {
-        Failed = -1,
-        Success = 0,
     }
 
     internal readonly struct ClientInitializationPayload

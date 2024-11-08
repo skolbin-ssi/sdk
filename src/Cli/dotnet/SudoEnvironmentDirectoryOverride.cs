@@ -1,10 +1,7 @@
-﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
 using System.CommandLine;
-using System.IO;
-using System.Linq;
 using Microsoft.DotNet.Cli.Utils;
 using NuGet.Common;
 using NuGet.Configuration;
@@ -58,15 +55,15 @@ namespace Microsoft.DotNet.Cli
                 .Select(fileName => Path.Combine(userSettingsDir, fileName))
                 .FirstOrDefault(f => File.Exists(f));
 
-            var overridenSettingsDir = NuGetEnvironment.GetFolderPath(NuGetFolderPath.UserSettingsDirectory);
-            var overridenNugetConfig = Path.Combine(overridenSettingsDir, Settings.DefaultSettingsFileName);
+            var overriddenSettingsDir = NuGetEnvironment.GetFolderPath(NuGetFolderPath.UserSettingsDirectory);
+            var overriddenNugetConfig = Path.Combine(overriddenSettingsDir, Settings.DefaultSettingsFileName);
 
-            if (File.Exists(overridenNugetConfig))
+            if (File.Exists(overriddenNugetConfig))
             {
                 try
                 {
                     FileAccessRetrier.RetryOnIOException(
-                        () => File.Delete(overridenNugetConfig));
+                        () => File.Delete(overriddenNugetConfig));
                 }
                 catch
                 {
@@ -79,7 +76,7 @@ namespace Microsoft.DotNet.Cli
                 try
                 {
                     FileAccessRetrier.RetryOnIOException(
-                        () => File.Copy(userNuGetConfig, overridenNugetConfig, overwrite: true));
+                        () => File.Copy(userNuGetConfig, overriddenNugetConfig, overwrite: true));
                 }
                 catch
                 {

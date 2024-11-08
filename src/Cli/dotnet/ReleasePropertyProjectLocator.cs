@@ -1,15 +1,8 @@
-﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
-//
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Build.Execution;
 using Microsoft.DotNet.Cli.Sln.Internal;
 using Microsoft.DotNet.Cli.Utils;
@@ -69,7 +62,7 @@ namespace Microsoft.DotNet.Cli
             // Setup
             Debug.Assert(_propertyToCheck == MSBuildPropertyNames.PUBLISH_RELEASE || _propertyToCheck == MSBuildPropertyNames.PACK_RELEASE, "Only PackRelease or PublishRelease are currently expected.");
             var nothing = Enumerable.Empty<string>();
-            if (String.Equals(Environment.GetEnvironmentVariable(EnvironmentVariableNames.DISABLE_PUBLISH_AND_PACK_RELEASE), "true", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Environment.GetEnvironmentVariable(EnvironmentVariableNames.DISABLE_PUBLISH_AND_PACK_RELEASE), "true", StringComparison.OrdinalIgnoreCase))
             {
                 return nothing;
             }
@@ -145,7 +138,7 @@ namespace Microsoft.DotNet.Cli
                     }
                 }
             }
-            return null;  // If nothing can be found: that's caught by MSBuild XMake::ProcessProjectSwitch -- don't change the behavior by failing here. 
+            return null;  // If nothing can be found: that's caught by MSBuild XMake::ProcessProjectSwitch -- don't change the behavior by failing here.
         }
 
         /// <returns>An arbitrary existant project in a solution file. Returns null if no projects exist.
@@ -163,11 +156,11 @@ namespace Microsoft.DotNet.Cli
             }
 
             _isHandlingSolution = true;
-            List<ProjectInstance> configuredProjects = new List<ProjectInstance>();
-            HashSet<string> configValues = new HashSet<string>();
-            object projectDataLock = new object();
+            List<ProjectInstance> configuredProjects = new();
+            HashSet<string> configValues = new();
+            object projectDataLock = new();
 
-            if (String.Equals(Environment.GetEnvironmentVariable(EnvironmentVariableNames.DOTNET_CLI_LAZY_PUBLISH_AND_PACK_RELEASE_FOR_SOLUTIONS), "true", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Environment.GetEnvironmentVariable(EnvironmentVariableNames.DOTNET_CLI_LAZY_PUBLISH_AND_PACK_RELEASE_FOR_SOLUTIONS), "true", StringComparison.OrdinalIgnoreCase))
             {
                 // Evaluate only one project for speed if this environment variable is used. Will break more customers if enabled (adding 8.0 project to SLN with other project TFMs with no Publish or PackRelease.)
                 return GetSingleProjectFromSolution(sln, globalProps);
@@ -204,7 +197,7 @@ namespace Microsoft.DotNet.Cli
                 // 1) This error should not be thrown in VS because it is part of the SDK CLI code
                 // 2) If PublishRelease or PackRelease is disabled via opt out, or Configuration is specified, we won't get to this code, so we won't error
                 // 3) This code only gets hit if we are in a solution publish setting, so we don't need to worry about it failing other publish scenarios
-                throw new GracefulException(Strings.SolutionProjectConfigurationsConflict, _propertyToCheck, String.Join("\n", (configuredProjects).Select(x => x.FullPath)));
+                throw new GracefulException(Strings.SolutionProjectConfigurationsConflict, _propertyToCheck, string.Join("\n", (configuredProjects).Select(x => x.FullPath)));
             }
             return configuredProjects.FirstOrDefault();
         }
@@ -212,7 +205,7 @@ namespace Microsoft.DotNet.Cli
         /// <summary>
         /// Returns an arbitrary project for the solution. Relies on the .NET SDK PrepareForPublish or _VerifyPackReleaseConfigurations MSBuild targets to catch conflicting values of a given property, like PublishRelease or PackRelease.
         /// </summary>
-        /// <param name="sln">The solution to get an arbitrary project from.</param>
+        /// <param name="solution">The solution to get an arbitrary project from.</param>
         /// <param name="globalProps">The global properties to load into the project.</param>
         /// <returns>null if no project exists in the solution that can be evaluated properly. Else, the first project in the solution that can be.</returns>
         private ProjectInstance? GetSingleProjectFromSolution(SlnFile sln, Dictionary<string, string> globalProps)
@@ -258,16 +251,15 @@ namespace Microsoft.DotNet.Cli
                 Reporter.Error.WriteLine(e.Message);
             }
             return null;
-#nullable disable
         }
 
-        /// <returns>Returns true if the path exists and is a project file type.</returns> 
+        /// <returns>Returns true if the path exists and is a project file type.</returns>
         private bool IsValidProjectFilePath(string path)
         {
             return File.Exists(path) && Path.GetExtension(path).EndsWith("proj");
         }
 
-        /// <returns>Returns true if the path exists and is a sln file type.</returns> 
+        /// <returns>Returns true if the path exists and is a sln file type.</returns>
         private bool IsValidSlnFilePath(string path)
         {
             return File.Exists(path) && Path.GetExtension(path).EndsWith("sln");
@@ -276,16 +268,19 @@ namespace Microsoft.DotNet.Cli
         /// <returns>A case-insensitive dictionary of any properties passed from the user and their values.</returns>
         private Dictionary<string, string> GetUserSpecifiedExplicitMSBuildProperties()
         {
-            Dictionary<string, string> globalProperties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> globalProperties = new(StringComparer.OrdinalIgnoreCase);
 
-            string[] globalPropEnumerable = _parseResult.GetValue(CommonOptions.PropertiesOption);
+            string[]? globalPropEnumerable = _parseResult.GetValue(CommonOptions.PropertiesOption);
 
-            foreach (var keyEqValString in globalPropEnumerable)
+            if ( globalPropEnumerable != null )
             {
-                var propertyPairs = MSBuildPropertyParser.ParseProperties(keyEqValString);
-                foreach (var propertyKeyValue in propertyPairs)
+                foreach (var keyEqValString in globalPropEnumerable)
                 {
-                    globalProperties[propertyKeyValue.key] = propertyKeyValue.value;
+                    var propertyPairs = MSBuildPropertyParser.ParseProperties(keyEqValString);
+                    foreach (var propertyKeyValue in propertyPairs)
+                    {
+                        globalProperties[propertyKeyValue.key] = propertyKeyValue.value;
+                    }
                 }
             }
             return globalProperties;

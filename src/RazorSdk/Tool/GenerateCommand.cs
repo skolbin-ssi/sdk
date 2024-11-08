@@ -1,12 +1,7 @@
-// Copyright (c) .NET Foundation. All rights reserved.
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Razor.Language;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Razor;
@@ -79,16 +74,8 @@ namespace Microsoft.NET.Sdk.Razor.Tool
                 return Task.FromResult(ExitCodeFailure);
             }
 
-            // Loading all of the extensions should succeed as the dependency checker will have already
-            // loaded them.
-            var extensions = new RazorExtension[ExtensionNames.Values.Count];
-            for (var i = 0; i < ExtensionNames.Values.Count; i++)
-            {
-                extensions[i] = new AssemblyExtension(ExtensionNames.Values[i], Parent.Loader.LoadFromPath(ExtensionFilePaths.Values[i]));
-            }
-
             var version = RazorLanguageVersion.Parse(Version.Value());
-            var configuration = RazorConfiguration.Create(version, Configuration.Value(), extensions);
+            var configuration = new RazorConfiguration(version, Configuration.Value(), Extensions: [], UseConsolidatedMvcViews: false);
 
             var sourceItems = GetSourceItems(
                 Sources.Values, Outputs.Values, RelativePaths.Values,
@@ -174,6 +161,8 @@ namespace Microsoft.NET.Sdk.Razor.Tool
                 }
             }
 
+            DiscoverCommand.PatchExtensions(ExtensionNames, ExtensionFilePaths, Error);
+
             return true;
         }
 
@@ -197,6 +186,8 @@ namespace Microsoft.NET.Sdk.Razor.Tool
 
             var engine = RazorProjectEngine.Create(configuration, compositeFileSystem, b =>
             {
+                b.RegisterExtensions();
+
                 b.Features.Add(new StaticTagHelperFeature() { TagHelpers = tagHelpers, });
                 b.Features.Add(new DefaultTypeNameFeature());
 
@@ -239,7 +230,7 @@ namespace Microsoft.NET.Sdk.Razor.Tool
 
             foreach (var result in results)
             {
-                var errorCount = result.CSharpDocument.Diagnostics.Count;
+                var errorCount = result.CSharpDocument.Diagnostics.Length;
                 for (var i = 0; i < errorCount; i++)
                 {
                     var error = result.CSharpDocument.Diagnostics[i];
@@ -334,9 +325,9 @@ namespace Microsoft.NET.Sdk.Razor.Tool
             for (var i = 0; i < items.Length; i++)
             {
                 var fileKind = fileKinds.Count > 0 ? fileKinds[i] : "mvc";
-                if (Microsoft.AspNetCore.Razor.Language.FileKinds.IsComponent(fileKind))
+                if (AspNetCore.Razor.Language.FileKinds.IsComponent(fileKind))
                 {
-                    fileKind = Microsoft.AspNetCore.Razor.Language.FileKinds.GetComponentFileKindFromFilePath(sources[i]);
+                    fileKind = AspNetCore.Razor.Language.FileKinds.GetComponentFileKindFromFilePath(sources[i]);
                 }
 
                 var cssScopeValue = cssScopeAssociations.TryGetValue(sources[i], out var cssScopeIndex)

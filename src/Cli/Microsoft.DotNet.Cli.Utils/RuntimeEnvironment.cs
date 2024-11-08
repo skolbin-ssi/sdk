@@ -1,9 +1,5 @@
-﻿// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
-
-using System;
-using System.IO;
-using System.Runtime.InteropServices;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
 namespace Microsoft.DotNet.Cli.Utils
 {
@@ -15,13 +11,14 @@ namespace Microsoft.DotNet.Cli.Utils
         Darwin = 3,
         FreeBSD = 4,
         illumos = 5,
-        Solaris = 6
+        Solaris = 6,
+        Haiku = 7
     }
 
     internal static class RuntimeEnvironment
     {
-        private static readonly Lazy<Platform> _platform = new Lazy<Platform>(DetermineOSPlatform);
-        private static readonly Lazy<DistroInfo> _distroInfo = new Lazy<DistroInfo>(LoadDistroInfo);
+        private static readonly Lazy<Platform> _platform = new(DetermineOSPlatform);
+        private static readonly Lazy<DistroInfo> _distroInfo = new(LoadDistroInfo);
 
         public static Platform OperatingSystemPlatform { get; } = GetOSPlatform();
         public static string OperatingSystemVersion { get; } = GetOSVersion();
@@ -49,6 +46,8 @@ namespace Microsoft.DotNet.Cli.Utils
                     return GetDistroId() ?? nameof(Platform.illumos);
                 case Platform.Solaris:
                     return nameof(Platform.Solaris);
+                case Platform.Haiku:
+                    return nameof(Platform.Haiku);
                 default:
                     return nameof(Platform.Unknown);
             }
@@ -65,32 +64,17 @@ namespace Microsoft.DotNet.Cli.Utils
                     return GetDistroVersionId() ?? string.Empty;
                 case Platform.Darwin:
                     return Environment.OSVersion.Version.ToString(2);
-                case Platform.FreeBSD:
-                    return GetFreeBSDVersion() ?? string.Empty;
                 case Platform.Solaris:
                     // RuntimeInformation.OSDescription example on Solaris 11.3:      SunOS 5.11 11.3
                     // we only need the major version; 11
                     return RuntimeInformation.OSDescription.Split(' ')[2].Split('.')[0];
+                case Platform.FreeBSD:
+                case Platform.Haiku:
+                    // only the major version
+                    return Environment.OSVersion.Version.ToString(1);
                 default:
                     return string.Empty;
             }
-        }
-
-        private static string GetFreeBSDVersion()
-        {
-            // This is same as sysctl kern.version
-            // FreeBSD 11.0-RELEASE-p1 FreeBSD 11.0-RELEASE-p1 #0 r306420: Thu Sep 29 01:43:23 UTC 2016     root@releng2.nyi.freebsd.org:/usr/obj/usr/src/sys/GENERIC
-            // What we want is major release as minor releases should be compatible.
-            String version = RuntimeInformation.OSDescription;
-            try
-            {
-                // second token up to first dot
-                return RuntimeInformation.OSDescription.Split()[1].Split('.')[0];
-            }
-            catch
-            {
-            }
-            return string.Empty;
         }
 
         private static Platform GetOSPlatform()
@@ -242,7 +226,7 @@ namespace Microsoft.DotNet.Cli.Utils
             {
                 return Platform.Darwin;
             }
-#if NETCOREAPP
+#if NET
             if (RuntimeInformation.IsOSPlatform(OSPlatform.FreeBSD))
             {
                 return Platform.FreeBSD;
@@ -254,6 +238,10 @@ namespace Microsoft.DotNet.Cli.Utils
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Create("SOLARIS")))
             {
                 return Platform.Solaris;
+            }
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Create("HAIKU")))
+            {
+                return Platform.Haiku;
             }
 #endif
 

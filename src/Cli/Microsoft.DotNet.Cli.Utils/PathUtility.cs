@@ -1,11 +1,6 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
 using Microsoft.DotNet.Cli.Utils;
 
 namespace Microsoft.DotNet.Tools.Common
@@ -100,6 +95,34 @@ namespace Microsoft.DotNet.Tools.Common
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Deletes the provided file. Then deletes the parent directory if empty
+        /// and continues to its parent until it fails. Returns whether it succeeded
+        /// in deleting the file it was intended to delete.
+        /// </summary>
+        public static bool DeleteFileAndEmptyParents(string path, int maxDirectoriesToDelete = int.MaxValue)
+        {
+            if (!File.Exists(path))
+            {
+                return false;
+            }
+
+            File.Delete(path);
+            var dir = Path.GetDirectoryName(path);
+
+            int directoriesDeleted = 0;
+
+            while (!Directory.EnumerateFileSystemEntries(dir).Any() &&
+                directoriesDeleted < maxDirectoriesToDelete)
+            {
+                Directory.Delete(dir);
+                directoriesDeleted++;
+                dir = Path.GetDirectoryName(dir);
+            }
+
+            return !File.Exists(path);
         }
 
         /// <summary>
@@ -222,6 +245,7 @@ namespace Microsoft.DotNet.Tools.Common
             return path;
         }
 
+        [Obsolete("Use System.IO.Path.GetFullPath(string, string) instead, or PathUtility.GetFullPath(string) if the base path is the current working directory.")]
         public static string GetAbsolutePath(string basePath, string relativePath)
         {
             if (basePath == null)
@@ -234,7 +258,7 @@ namespace Microsoft.DotNet.Tools.Common
                 throw new ArgumentNullException(nameof(relativePath));
             }
 
-            Uri resultUri = new Uri(new Uri(basePath), new Uri(relativePath, UriKind.Relative));
+            Uri resultUri = new(new Uri(basePath), new Uri(relativePath, UriKind.Relative));
             return resultUri.LocalPath;
         }
 
@@ -299,7 +323,7 @@ namespace Microsoft.DotNet.Tools.Common
                 }
             }
 
-            if (path[path.Length-1] == Path.DirectorySeparatorChar)
+            if (path[path.Length - 1] == Path.DirectorySeparatorChar)
             {
                 result += Path.DirectorySeparatorChar;
             }
@@ -357,7 +381,7 @@ namespace Microsoft.DotNet.Tools.Common
             }
         }
 
-        public static bool IsDirectory(this string path) => 
+        public static bool IsDirectory(this string path) =>
             File.GetAttributes(path).HasFlag(FileAttributes.Directory);
     }
 }

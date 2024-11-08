@@ -1,20 +1,15 @@
-// Copyright (c) .NET Foundation and contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.CommandLine;
-using System.CommandLine.Parsing;
-using System.IO;
-using System.Linq;
 using Microsoft.Build.Construction;
 using Microsoft.Build.Execution;
-using Microsoft.Build.Framework;
 using Microsoft.Build.Logging;
 using Microsoft.DotNet.Cli;
+using Microsoft.DotNet.Cli.NuGetPackageDownloader;
 using Microsoft.DotNet.Cli.Utils;
 using Microsoft.DotNet.Workloads.Workload.Install;
+using Microsoft.DotNet.Workloads.Workload.Update;
 using Microsoft.Extensions.EnvironmentAbstractions;
 using Microsoft.NET.Sdk.WorkloadManifestReader;
 
@@ -38,16 +33,44 @@ namespace Microsoft.DotNet.Workloads.Workload.Restore
 
         public override int Execute()
         {
-            var allProjects = DiscoverAllProjects(Directory.GetCurrentDirectory(), _slnOrProjectArgument).Distinct();
-            List<WorkloadId> allWorkloadId = RunTargetToGetWorkloadIds(allProjects);
-            Reporter.WriteLine(string.Format(LocalizableStrings.InstallingWorkloads, string.Join(" ", allWorkloadId)));
+            var workloadResolverFactory = new WorkloadResolverFactory();
+            var creationResult = workloadResolverFactory.Create();
+            var workloadInstaller = WorkloadInstallerFactory.GetWorkloadInstaller(NullReporter.Instance, new SdkFeatureBand(creationResult.SdkVersion),
+                                        creationResult.WorkloadResolver, Verbosity, creationResult.UserProfileDir, VerifySignatures, PackageDownloader,
+                                        creationResult.DotnetPath, TempDirectoryPath, null, RestoreActionConfiguration, elevationRequired: true);
+            var recorder = new WorkloadHistoryRecorder(
+                               creationResult.WorkloadResolver,
+                               workloadInstaller,
+                               () => workloadResolverFactory.CreateForWorkloadSet(
+                                   creationResult.DotnetPath,
+                                   creationResult.SdkVersion.ToString(),
+                                   creationResult.UserProfileDir,
+                                   null));
+            recorder.HistoryRecord.CommandName = "restore";
 
-            var workloadInstallCommand = new WorkloadInstallCommand(_result,
-                workloadIds: allWorkloadId.Select(a => a.ToString()).ToList().AsReadOnly());
+            recorder.Run(() =>
+            {
+                // First update manifests and install a workload set as necessary
+                new WorkloadUpdateCommand(_result, recorder: recorder, isRestoring: true).Execute();
 
-            workloadInstallCommand.Execute();
+                var allProjects = DiscoverAllProjects(Directory.GetCurrentDirectory(), _slnOrProjectArgument).Distinct();
+                List<WorkloadId> allWorkloadId = RunTargetToGetWorkloadIds(allProjects);
+                Reporter.WriteLine(string.Format(LocalizableStrings.InstallingWorkloads, string.Join(" ", allWorkloadId)));
+
+                new WorkloadInstallCommand(_result,
+                    workloadIds: allWorkloadId.Select(a => a.ToString()).ToList().AsReadOnly(),
+                    skipWorkloadManifestUpdate: true)
+                {
+                    IsRunningRestore = true
+                }.Execute();
+            });
+
+            workloadInstaller.Shutdown();
+            
             return 0;
         }
+
+        private static string GetRequiredWorkloadsTargetName = "_GetRequiredWorkloads";
 
         private List<WorkloadId> RunTargetToGetWorkloadIds(IEnumerable<string> allProjects)
         {
@@ -60,12 +83,15 @@ namespace Microsoft.DotNet.Workloads.Workload.Restore
             foreach (string projectFile in allProjects)
             {
                 var project = new ProjectInstance(projectFile, globalProperties, null);
+                if (!project.Targets.ContainsKey(GetRequiredWorkloadsTargetName))
+                {
+                    continue;
+                }
 
-                bool buildResult = project.Build(new[] {"_GetRequiredWorkloads"},
-                    loggers: new ILogger[]
-                    {
+                bool buildResult = project.Build([GetRequiredWorkloadsTargetName],
+                    loggers: [
                         new ConsoleLogger(Verbosity.ToLoggerVerbosity())
-                    },
+                    ],
                     remoteLoggers: Enumerable.Empty<ForwardingLoggerRecord>(),
                     targetOutputs: out var targetOutputs);
 
@@ -78,7 +104,7 @@ namespace Microsoft.DotNet.Workloads.Workload.Restore
                         isUserError: false);
                 }
 
-                var targetResult = targetOutputs["_GetRequiredWorkloads"];
+                var targetResult = targetOutputs[GetRequiredWorkloadsTargetName];
                 allWorkloadId.AddRange(targetResult.Items.Select(item => new WorkloadId(item.ItemSpec)));
             }
 
